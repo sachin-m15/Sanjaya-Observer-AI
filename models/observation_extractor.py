@@ -419,6 +419,13 @@ Format it as a natural dialogue where:
         📈 Needs Work (1-2 areas) – Area not activated or underperforming today
 
         give the entire report such that its a direct send worthy item, so all things should always be there and no other unecessary words in the response. No repetation.
+        Also make sure each and every report generated always has the legend "🟢 Legend
+
+        ✅ Performance by Area
+        🟢 Excellent (7/7 areas) – Clear growth with strong evidence
+        💚 Good (5-6 areas) – Solid engagement with positive trends        
+        ⚠️ Fair (3-4 areas) – Some engagement, needs encouragement        
+        📈 Needs Work (1-2 areas) – Area not activated or underperforming today" at the bottom of each report as the format of the report specifies. 
         """
 
         try:
@@ -1423,3 +1430,4 @@ Please provide suggestions in this exact format:
 - Develop communication and expression skills
 
 🌟 **SESSION TIP:** Start with what interests {child_name} most and build the lesson around {pronouns['possessive']} natural curiosity!"""
+
