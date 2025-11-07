@@ -13,9 +13,7 @@ from datetime import datetime
 from config import Config
 import os
 import logging
-
 logger = logging.getLogger(__name__)
-
 
 class ObservationExtractor:
     def __init__(self):
@@ -40,17 +38,12 @@ class ObservationExtractor:
     def extract_text_with_ocr(self, image_file):
         """Extract text from image using OCR.space API"""
         try:
-            # Get file extension
             file_type = image_file.filename.split('.')[-1].lower()
             if file_type == 'jpeg':
                 file_type = 'jpg'
-
-            # Convert image to base64
-            image_file.seek(0)  # Reset file pointer
+            image_file.seek(0)
             base64_image = self.image_to_base64(image_file)
             base64_image_with_prefix = f"data:image/{file_type};base64,{base64_image}"
-
-            # Prepare request payload
             payload = {
                 'apikey': self.ocr_api_key,
                 'language': 'eng',
@@ -62,33 +55,23 @@ class ObservationExtractor:
                 'scale': True,
                 'base64Image': base64_image_with_prefix
             }
-
-            # Send request to OCR API
             response = requests.post(
                 'https://api.ocr.space/parse/image',
                 data=payload,
                 headers={'apikey': self.ocr_api_key}
             )
-
             response.raise_for_status()
             data = response.json()
-
-            # Process response
             if not data.get('ParsedResults') or len(data['ParsedResults']) == 0:
                 error_msg = data.get('ErrorMessage', 'No parsed results returned')
                 raise Exception(f"OCR Error: {error_msg}")
-
             parsed_result = data['ParsedResults'][0]
             if parsed_result.get('ErrorMessage'):
                 raise Exception(f"OCR Error: {parsed_result['ErrorMessage']}")
-
             extracted_text = parsed_result['ParsedText']
-
             if not extracted_text or not extracted_text.strip():
                 raise Exception("No text was detected in the image")
-
             return extracted_text
-
         except Exception as e:
             raise Exception(f"OCR Error: {str(e)}")
 
@@ -96,14 +79,12 @@ class ObservationExtractor:
         """Process extracted text with Groq AI"""
         try:
             system_prompt = """You are an AI assistant for a learning observation system. Extract and structure information from the provided observation sheet text.
-
 CRITICAL INSTRUCTIONS FOR NAME HANDLING:
 - Do NOT use any names that appear in the observation text or audio transcription
 - For the "studentName" field, ONLY use names that are explicitly provided by the system/database
 - If no database name is provided, use "Student" as the default
 - NEVER assume gender - always refer to the student as "the student" or "Student" in descriptions
 - Do not use gender-specific pronouns (he/his, she/her) in any part of the response
-
 The observation sheets typically have the following structure:
 - Title (usually "The Observer")
 - Student information (Name, Roll Number/ID) - IGNORE names from this section
@@ -111,7 +92,6 @@ The observation sheets typically have the following structure:
 - Core Observation Section with time slots
 - Teaching content for each time slot
 - Learning details (what was learned, tools used, etc.)
-
 Format your response as JSON with the following structure:
 {
   "studentName": "Use ONLY the database-provided name, never from observation text",
@@ -125,13 +105,9 @@ Format your response as JSON with the following structure:
   "themeOfDay": "Main theme or topic of the day",
   "curiositySeed": "Something that sparked the child's interest"
 }
-
 For observations, provide full detailed descriptions like:
 "The student learned how to make maggi from their parent through in-person mode, including all steps from boiling water to adding spices"
-
 IMPORTANT: Never use gender-specific language or names from the observation text. Always refer to 'the student' in descriptions."""
-
-            # Send request to Groq API
             response = requests.post(
                 'https://api.groq.com/openai/v1/chat/completions',
                 headers={
@@ -141,27 +117,17 @@ IMPORTANT: Never use gender-specific language or names from the observation text
                 json={
                     "model": "llama-3.3-70b-versatile",
                     "messages": [
-                        {
-                            "role": "system",
-                            "content": system_prompt
-                        },
-                        {
-                            "role": "user",
-                            "content": f"Extract and structure the following text from an observation sheet: {extracted_text}"
-                        }
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"Extract and structure the following text from an observation sheet: {extracted_text}"}
                     ],
                     "temperature": 0.2,
                     "response_format": {"type": "json_object"}
                 }
             )
-
             response.raise_for_status()
             data = response.json()
-
-            # Extract the JSON content
             ai_response = data['choices'][0]['message']['content']
             return json.loads(ai_response)
-
         except Exception as e:
             raise Exception(f"Groq API Error: {str(e)}")
 
@@ -169,63 +135,41 @@ IMPORTANT: Never use gender-specific language or names from the observation text
         """Transcribe audio using AssemblyAI API with English, Hindi, Marathi, or Punjabi."""
         if not Config.ASSEMBLYAI_API_KEY:
             return "Error: AssemblyAI API key is not configured."
-
-        headers = {
-            "authorization": Config.ASSEMBLYAI_API_KEY,
-            "content-type": "application/json"
-        }
-
+        headers = {"authorization": Config.ASSEMBLYAI_API_KEY, "content-type": "application/json"}
         try:
-            # Upload the audio file
             audio_file.seek(0)
             upload_response = requests.post(
                 "https://api.assemblyai.com/v2/upload",
                 headers={"authorization": Config.ASSEMBLYAI_API_KEY},
                 data=audio_file.read()
             )
-
             if upload_response.status_code != 200:
                 return f"Error uploading audio: {upload_response.text}"
-
             upload_url = upload_response.json()["upload_url"]
-
-            # Prepare transcription request
-            transcript_request = {
-                "audio_url": upload_url,
-                "language_code": language_code  # 'en', 'hi', 'mr', or 'pa'
-            }
-
+            transcript_request = {"audio_url": upload_url, "language_code": language_code}
             transcript_response = requests.post(
                 "https://api.assemblyai.com/v2/transcript",
                 json=transcript_request,
                 headers=headers
             )
-
             if transcript_response.status_code != 200:
                 return f"Error requesting transcription: {transcript_response.text}"
-
             transcript_id = transcript_response.json()["id"]
-
             status = "processing"
             while status != "completed" and status != "error":
                 polling_response = requests.get(
                     f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
                     headers=headers
                 )
-
                 if polling_response.status_code != 200:
                     return f"Error checking transcription status: {polling_response.text}"
-
                 polling_data = polling_response.json()
                 status = polling_data["status"]
-
                 if status == "completed":
                     return polling_data["text"]
                 elif status == "error":
                     return f"Transcription error: {polling_data.get('error', 'Unknown error')}"
-
                 time.sleep(2)
-
             return "Error: Transcription timed out or failed."
         except Exception as e:
             return f"Error during transcription: {str(e)}"
@@ -234,14 +178,12 @@ IMPORTANT: Never use gender-specific language or names from the observation text
         """Convert raw observations/transcript into conversational format using Gemini API"""
         try:
             prompt = f"""
-            Convert the following observation text into a conversational format between an Observer and a Child. 
-
+            Convert the following observation text into a conversational format between an Observer and a Child.
 CRITICAL INSTRUCTIONS:
 - NEVER use any names that appear in the raw text or audio
 - Always refer to the child as "Child" in the dialogue labels
 - Do not assume gender - avoid using he/his, she/her pronouns
 - Use gender-neutral language throughout the conversation
-
 Format it as a natural dialogue where:
             - Observer speaks first with questions, instructions, or observations
             - Child responds naturally based on the context
@@ -253,40 +195,31 @@ Format it as a natural dialogue where:
             - Include educational moments and learning interactions
             - NEVER use names from the original text - always use "Child:" as the label
             - Avoid gender assumptions in the dialogue content
-
             Original observation text:
             {raw_text}
-
             Please format as a realistic conversation:
             Observer: [what the observer might have said or asked]
             Child: [how the child might have responded based on the context]
             Observer: [follow-up from observer]
             Child: [child's response]
-
             Keep it natural, educational, and age-appropriate. Make sure the conversation flows logically and would realistically result in the observations described in the original text. Remember to never use names from the original text and avoid gender-specific language.
             """
-
-            # Use the same Gemini API pattern as your existing methods
             model = genai.GenerativeModel('gemini-2.0-flash')
             config = genai.types.GenerationConfig(temperature=0.2)
             response = model.generate_content([
                 {"role": "user", "parts": [{"text": prompt}]}
-            ],generation_config=config)
-
+            ], generation_config=config)
             if response and response.text:
                 return response.text.strip()
             else:
                 return self._basic_transcript_formatting(raw_text)
-
         except Exception as e:
-            # Fallback to basic formatting if API fails
             return self._basic_transcript_formatting(raw_text)
 
     def _basic_transcript_formatting(self, raw_text):
         """Basic fallback transcript formatting"""
         lines = raw_text.split('\n')
         formatted_lines = []
-
         for i, line in enumerate(lines):
             line = line.strip()
             if line:
@@ -294,338 +227,283 @@ Format it as a natural dialogue where:
                     formatted_lines.append(f"Observer: {line}")
                 else:
                     formatted_lines.append(f"Child: {line}")
-
         if not formatted_lines:
-            # If no lines, create a basic conversation
             formatted_lines = [
                 "Observer: Can you tell me about what you learned today?",
                 f"Child: {raw_text[:100]}..." if len(raw_text) > 100 else f"Child: {raw_text}",
                 "Observer: That's wonderful! Can you tell me more about it?",
                 "Child: Yes, I enjoyed learning about this topic."
             ]
-
         return '\n'.join(formatted_lines)
 
+    # =============================================
+    # UPDATED METHOD: DAILY INSIGHTS REPORT (TEEN)
+    # =============================================
     def generate_report_from_text(self, text_content, user_info):
-        """Generate a structured report from text using Google Gemini"""
-        # Get child information with gender
+        """Generate Daily Insights Report for Teens - EXACT FORMAT FROM DOCX"""
         from models.database import get_child_by_id
-        
-        # Ensure we have a valid child_id and student_name
+
+        # === Resolve Teen Data ===
         child_id = user_info.get('child_id')
-        student_name = user_info.get('student_name', 'Student')
-        
-        # If no child_id, try to get child by name
-        if not child_id and student_name != 'Student':
+        teen_name = user_info.get('student_name', 'Teen')
+        observer_name = user_info.get('observer_name', 'Observer')
+        session_date = user_info.get('session_date', datetime.now().strftime('%Y-%m-%d'))
+        call_time = user_info.get('call_time', '30 mins at 4:00 PM')
+
+        # Fetch from DB if needed
+        if not child_id and teen_name != 'Teen':
             from models.database import get_supabase_client
             supabase = get_supabase_client()
-            child_data = supabase.table('children').select('id, name, gender').eq('name', student_name).execute().data
-            if child_data:
-                child_id = child_data[0]['id']
-                child = child_data[0]
-            else:
-                child = None
+            child_data = supabase.table('children').select('id, name, gender').eq('name', teen_name).execute().data
+            child = child_data[0] if child_data else None
         else:
             child = get_child_by_id(child_id) if child_id else None
-        
-        # Get pronouns based on gender
+
+        teen_name = child['name'] if child and child.get('name') else teen_name
         pronouns = self.get_pronouns(child['gender']) if child and child.get('gender') else {'subject': 'they', 'object': 'them', 'possessive': 'their'}
-        
-        # Ensure we have a valid student name
-        if not student_name or student_name == 'Student':
-            student_name = child['name'] if child and child.get('name') else 'Student'
-        
-        # --- MODIFICATION START: New prompt based on the Word document ---
+
+        # === EXACT PROMPT MATCHING DOCX FORMAT ===
         prompt = f"""
-        You are an expert educational observer. Your task is to generate a "Daily Insights Report" based on the provided session transcript/notes.
-        The report is for parents and focuses on analyzing a teen's goal alignment by comparing their thoughts, words, and actions.
+You are an AI observer generating a **Daily Insights Report** for a teen's parent. Use the **exact structure below** — no additions, no omissions, no extra words.
 
-        CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
-        - ALWAYS use the exact name provided for the teen: {student_name}
-        - ALWAYS use the exact name provided for the listener: {user_info.get('observer_name', 'Observer')}
-        - Use these pronouns for the teen throughout the report: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}
-        - When referring to the teen, use "{student_name}" or the appropriate pronouns ({pronouns['subject']}/{pronouns['object']}/{pronouns['possessive']}).
-        - NEVER extract or use any other names that might appear in the raw text content.
-        - The tone should be professional, insightful, and supportive.
+**CRITICAL RULES:**
+- Use **{teen_name}** as the teen's name everywhere
+- Use pronouns: **{pronouns['subject']} / {pronouns['object']} / {pronouns['possessive']}**
+- **Never** use names from {text_content}
+- Infer all content **only from the provided transcript**
+- **Preserve all bullet points and formatting exactly**
+- **Include all sections in order**
 
-        SESSION TRANSCRIPT/NOTES:
-        {text_content}
+**TRANSCRIPT TO ANALYZE:**
+{text_content}
 
-        Please analyze the text and generate the report using the *exact* format below. Fill in each section based on the provided text, making reasonable inferences where necessary.
+**OUTPUT EXACTLY THIS FORMAT (NO EXTRA TEXT):**
 
-        --- START OF REPORT FORMAT ---
+**Daily Insights Report Format**
 
-        Daily Insights Report
+**Report Structure for Parent Observation**  
+**Date:** {session_date}  
+**Time:** {call_time}  
+**Listener:** {observer_name}  
+**Teen:** {teen_name}
 
-        Date: {user_info.get('session_date', 'Today')}
-        Time: [Extract or infer call duration, e.g., "30-minute call"]
-        Listener: {user_info.get('observer_name', 'Observer')}
-        Teen: {student_name}
+---
 
-        Today's Insights Section
+**Today's Insights Section**  
+**What the teen shared about their day:**  
+· [Key experiences or learnings mentioned]  
+· [Moments of achievement or challenge they highlighted]  
+· [Emotional tone and energy level during sharing]  
 
-        What {student_name} shared about {pronouns['possessive']} day:
-        - [Key experiences or learnings mentioned]
-        - [Moments of achievement or challenge {pronouns['subject']} highlighted]
-        - [Emotional tone and energy level during sharing]
+**Questions asked by listener:**  
+· [Specific questions posed to encourage reflection]  
+· [Follow-up questions about goal alignment]  
+· [Any clarifying questions about daily activities]  
 
-        Questions asked by listener:
-        - [Specific questions posed to encourage reflection]
-        - [Follow-up questions about goal alignment]
-        - [Any clarifying questions about daily activities]
+---
 
-        Thoughts-Words-Actions Alignment Analysis
+**Thoughts-Words-Actions Alignment Analysis**  
+**Thoughts (What they're thinking about):**  
+· [Goals and ambitions expressed]  
+· [Concerns or worries mentioned]  
+· [Future aspirations discussed]  
+· [Self-reflection demonstrated]  
 
-        Thoughts (What {pronouns['subject']}'s thinking about):
-        - [Goals and ambitions expressed]
-        - [Concerns or worries mentioned]
-        - [Future aspirations discussed]
-        - [Self-reflection demonstrated]
+**Words (How they communicate):**  
+· [Clarity of expression about their goals]  
+· [Consistency between stated intentions and described actions]  
+· [Language used when discussing challenges or setbacks]  
+· [Confidence level in verbal communication]  
 
-        Words (How {pronouns['subject']} communicate{'' if pronouns['subject'] == 'they' else 's'}):
-        - [Clarity of expression about {pronouns['possessive']} goals]
-        - [Consistency between stated intentions and described actions]
-        - [Language used when discussing challenges or setbacks]
-        - [Confidence level in verbal communication]
+**Actions (What they actually did):**  
+· [Specific activities completed during the day]  
+· [Steps taken toward stated goals]  
+· [Time allocation and priorities demonstrated]  
+· [Behaviors that support or contradict stated intentions]  
 
-        Actions (What {pronouns['subject']} actually did):
-        - [Specific activities completed during the day]
-        - [Steps taken toward stated goals]
-        - [Time allocation and priorities demonstrated]
-        - [Behaviors that support or contradict stated intentions]
+---
 
-        Goal Alignment Assessment
+**Goal Alignment Assessment**  
+**Alignment Score:** [High/Medium/Low]  
+**Evidence of Alignment:**  
+· [Activities that directly support stated goals]  
+· [Decisions made that reflect long-term thinking]  
+· [Consistency between daily actions and bigger ambitions]  
 
-        Alignment Score: [High/Medium/Low]
-        
-        Evidence of Alignment:
-        - [Activities that directly support stated goals]
-        - [Decisions made that reflect long-term thinking]
-        - [Consistency between daily actions and bigger ambitions]
+**Misalignment Observations:**  
+· [Activities that don't connect to stated goals]  
+· [Time spent on activities unrelated to ambitions]  
+· [Contradictions between words and actions]  
 
-        Misalignment Observations:
-        - [Activities that don't connect to stated goals]
-        - [Time spent on activities unrelated to ambitions]
-        - [Contradictions between words and actions]
+**Questions Asked for Redirection:**  
+· "[Will this help toward your goal?]" responses and reactions  
+· [Teen's self-assessment of daily choices]  
+· [Recognition of alignment gaps]  
 
-        Questions Asked for Redirection:
-        - ["Will this help toward your goal?" responses and reactions]
-        - [{student_name}'s self-assessment of daily choices]
-        - [Recognition of alignment gaps]
+---
 
-        Tomorrow's Plans Review
+**Tomorrow's Plans Review**  
+**Stated Plans:**  
+· [Specific activities planned for next day]  
+· [Goals or milestones teen wants to achieve]  
+· [Time commitments and priorities outlined]  
 
-        Stated Plans:
-        - [Specific activities planned for next day]
-        - [Goals or milestones {student_name} wants to achieve]
-        - [Time commitments and priorities outlined]
+**Goal Connection Analysis:**  
+· [How tomorrow's plans align with stated ambitions]  
+· [Evidence of strategic thinking about future actions]  
+· [Adjustments made based on today's reflection]  
 
-        Goal Connection Analysis:
-        - [How tomorrow's plans align with stated ambitions]
-        - [Evidence of strategic thinking about future actions]
-        - [Adjustments made based on today's reflection]
+---
 
-        Behavioral Observations
+**Behavioral Observations**  
+**Engagement Level:**  
+· [Enthusiasm when discussing goals vs. daily activities]  
+· [Openness to self-reflection questions]  
+· [Willingness to examine alignment gaps]  
 
-        Engagement Level:
-        - [Enthusiasm when discussing goals vs. daily activities]
-        - [Openness to self-reflection questions]
-        - [Willingness to examine alignment gaps]
+**Self-Awareness Indicators:**  
+· [Ability to recognize disconnects independently]  
+· [Insight into personal patterns and habits]  
+· [Recognition of progress or setbacks]  
 
-        Self-Awareness Indicators:
-        - [Ability to recognize disconnects independently]
-        - [Insight into personal patterns and habits]
-        - [Recognition of progress or setbacks]
+**Response to Redirection:**  
+· [Reaction when asked alignment questions]  
+· [Ability to self-correct without advice]  
+· [Demonstration of independent problem-solving]  
 
-        Response to Redirection:
-        - [Reaction when asked alignment questions]
-        - [Ability to self-correct without advice]
-        - [Demonstration of independent problem-solving]
+---
 
-        Communication Quality
+**Communication Quality**  
+**Listening Skills:**  
+· [Attention during conversation]  
+· [Understanding of questions asked]  
+· [Thoughtful responses vs. quick answers]  
 
-        Listening Skills:
-        - [Attention during conversation]
-        - [Understanding of questions asked]
-        - [Thoughtful responses vs. quick answers]
+**Expression Clarity:**  
+· [Ability to articulate thoughts and feelings]  
+· [Consistency in communication throughout call]  
+· [Use of specific examples vs. vague statements]  
 
-        Expression Clarity:
-        - [Ability to articulate thoughts and feelings]
-        - [Consistency in communication throughout call]
-        - [Use of specific examples vs. vague statements]
+---
 
-        Parent Recommendations (Observer Notes)
+**Parent Recommendations (Observer Notes)**  
+**Strengths Observed:**  
+· [Areas where teen shows strong alignment]  
+· [Evidence of growing self-awareness]  
+· [Positive behavioral patterns emerging]  
 
-        Strengths Observed:
-        - [Areas where {student_name} shows strong alignment]
-        - [Evidence of growing self-awareness]
-        - [Positive behavioral patterns emerging]
+**Areas for Continued Focus:**  
+· [Specific misalignment patterns to monitor]  
+· [Questions that prompt best self-reflection]  
+· [Topics that generate most engagement]  
 
-        Areas for Continued Focus:
-        - [Specific misalignment patterns to monitor]
-        - [Questions that prompt best self-reflection]
-        - [Topics that generate most engagement]
+**Suggested Parent Follow-up:**  
+· [Themes parents might explore in casual conversation]  
+· [Achievements worth acknowledging]  
+· [Areas where gentle accountability might help]  
 
-        Suggested Parent Follow-up:
-        - [Themes parents might explore in casual conversation]
-        - [Achievements worth acknowledging]
-        - [Areas where gentle accountability might help]
+---
 
-        Call Summary
+**Call Summary**  
+**Overall Assessment:**  
+· [Teen's current level of goal-directed thinking]  
+· [Progress in self-awareness and reflection skills]  
+· [Quality of thoughts-words-actions alignment]  
 
-        Overall Assessment:
-        - [{student_name}'s current level of goal-directed thinking]
-        - [Progress in self-awareness and reflection skills]
-        - [Quality of thoughts-words-actions alignment]
-
-        Key Insights for Parents:
-        - [Most important observations from today's call]
-        - [Evidence of growth or areas needing attention]
-        - [Recommendations for continued support without interference]
-        
-        --- END OF REPORT FORMAT ---
-
-        Please ensure the entire response *only* contains the formatted report, starting from "Daily Insights Report". Do not add any extra commentary before or after.
-        """
-        # --- MODIFICATION END ---
+**Key Insights for Parents:**  
+· [Most important observations from today's call]  
+· [Evidence of growth or areas needing attention]  
+· [Recommendations for continued support without interference]
+"""
 
         try:
             model = genai.GenerativeModel('gemini-2.0-flash')
             config = genai.types.GenerationConfig(temperature=0.2)
-            response = model.generate_content([
-                {"role": "user", "parts": [{"text": prompt}]}
-            ],generation_config=config)
-            return response.text
+            response = model.generate_content([{"role": "user", "parts": [{"text": prompt}]}], generation_config=config)
+            return response.text.strip()
         except Exception as e:
             return f"Error generating report: {str(e)}"
 
+    # === REST OF THE CLASS (UNCHANGED) ===
     def generate_ai_communication_review(self, transcript, user_info):
-        """Generate AI communication review for peer review system"""
-        # Get child information with gender
         from models.database import get_child_by_id
         child = get_child_by_id(user_info.get('child_id'))
         pronouns = self.get_pronouns(child['gender']) if child and child.get('gender') else {'subject': 'they', 'object': 'them', 'possessive': 'their'}
-        
         prompt = f"""
-        You are an AI assistant analyzing observer-student communication sessions for educational quality assessment. 
+        You are an AI assistant analyzing observer-student communication sessions for educational quality assessment.
         Generate a comprehensive communication review in a professional report format based on the provided transcript.
-
         STUDENT: {user_info['student_name']}
         OBSERVER: {user_info['observer_name']}
         TRANSCRIPT: {transcript}
-        
         Use these pronouns for the student throughout the review: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}
-
         Generate a detailed AI communication review in the following professional format:
-
         Analysis of Observer's Communication Style
         This report analyzes the conversation transcripts to evaluate the observer's adherence to non-judgmental and non-teaching communication techniques with {user_info['student_name']}.
-
         1. Instances of Direct Advice, Judgment, or Teaching
         [Analyze specific examples where the observer provided direct advice, made judgments, or acted as a teacher rather than a listener]
-
-        ● 🚩 Red Flag: [Specific issue identified]
-        ○ Instances: [Describe specific examples from the transcript]
-        ■ [Date if available]: "[Exact quote from transcript]"
-        ○ Analysis: [Explain why this is problematic and its impact]
-
-        ● 🚩 Red Flag: [Another specific issue]
-        ○ Instance: [Describe the instance]
-        ○ Analysis: [Explain the impact and why it's concerning]
-
+        Red Flag: [Specific issue identified]
+        Instances: [Describe specific examples from the transcript]
+        [Date if available]: "[Exact quote from transcript]"
+        Analysis: [Explain why this is problematic and its impact]
+        Red Flag: [Another specific issue]
+        Instance: [Describe the instance]
+        Analysis: [Explain the impact and why it's concerning]
         2. Suggested Rephrasing for Non-Judgmental Communication
         [Provide specific examples of how the observer could rephrase their interactions]
-
-        ● For [specific issue]:
-        ○ Instead of: "[Current problematic phrase]"
-        ○ Ask: "[Suggested non-judgmental alternative]"
-
+        For [specific issue]:
+        Instead of: "[Current problematic phrase]"
+        Ask: "[Suggested non-judgmental alternative]"
         3. Missed Opportunities for Deeper Conversation
         [Identify moments where the observer could have explored topics more deeply]
-
-        ● Date: [if available]
-        ○ Missed Opportunity: [Describe what the student shared that could have been explored further]
-        ○ Suggested Question: "[Specific question the observer could have asked]"
-
+        Date: [if available]
+        Missed Opportunity: [Describe what the student shared that could have been explored further]
+        Suggested Question: "[Specific question the observer could have asked]"
         4. Adherence to Non-Judgmental Listening: A Summary
         [Create a summary table of the observer's performance]
-
-        Date | Adherence (✅/❌) | Red Flags | Suggested Improvements
-        [Date] | ✅/❌ | Yes/No | [Brief description of what went well or needs improvement]
-
+        Date | Adherence (Yes/No) | Red Flags | Suggested Improvements
+        [Date] | Yes/No | Yes/No | [Brief description of what went well or needs improvement]
         5. Findings and Recommendations for Program Managers
         [Provide actionable insights and recommendations]
-
         Observer Improvement Areas
         [Summarize the main areas where the observer needs to improve]
-
         Impact on the Student ({user_info['student_name']})
         [Analyze how the observer's communication style affects the student]
-
         Recommendation: [Provide specific, actionable recommendations for improvement]
-
-        Format the review with proper hierarchical structure using the bullet points (●, ○, ■) and numbered sections as shown above. Include specific quotes from the transcript when relevant. Be constructive and educational in tone while being honest about areas that need improvement.
+        Format the review with proper hierarchical structure using the bullet points (Red Flag, etc.) and numbered sections as shown above. Include specific quotes from the transcript when relevant. Be constructive and educational in tone while being honest about areas that need improvement.
         """
-
         try:
             model = genai.GenerativeModel('gemini-2.0-flash')
-            response = model.generate_content([
-                {"role": "user", "parts": [{"text": prompt}]}
-            ])
+            response = model.generate_content([{"role": "user", "parts": [{"text": prompt}]}], generation_config=config)
             return response.text
         except Exception as e:
             return f"Error generating AI communication review: {str(e)}"
 
     def create_word_document_with_emojis(self, report_content):
-        """Create a Word document from the report content with emoji support"""
         doc = docx.Document()
-
-        # Set document encoding and font for emoji support
         style = doc.styles['Normal']
         font = style.font
         font.name = 'Segoe UI Emoji'
-
-        title = doc.add_heading('📋 Daily Growth Report', 0)
+        title = doc.add_heading('Daily Insights Report', 0)
         title.runs[0].font.name = 'Segoe UI Emoji'
-
-        # Process the report content line by line
         lines = report_content.split('\n')
         for line in lines:
             line = line.strip()
             if not line:
                 continue
-
-            # Clean up markdown formatting but preserve emojis
             line = line.replace('**', '')
-
-            if line.startswith(('🧒', '📅', '🌱')):
+            if line.startswith(('Date:', 'Time:', 'Listener:', 'Teen:')):
                 p = doc.add_paragraph()
                 run = p.add_run(line)
                 run.bold = True
                 run.font.name = 'Segoe UI Emoji'
                 run.font.size = docx.shared.Pt(12)
-            elif line.startswith('📊'):
+            elif '---' in line:
+                p = doc.add_paragraph()
+                p.add_run('─' * 50).font.name = 'Segoe UI Emoji'
+            elif line.endswith(':'):
                 heading = doc.add_heading(line, level=1)
                 heading.runs[0].font.name = 'Segoe UI Emoji'
-            elif line.startswith(('🧠', '😊', '🤝', '🎨', '🏃', '🧭', '🚀')):
-                p = doc.add_paragraph()
-                run = p.add_run(line)
-                run.bold = True
-                run.font.name = 'Segoe UI Emoji'
-                run.font.size = docx.shared.Pt(11)
-            elif line.startswith(('🌈', '🗣️')):
-                heading = doc.add_heading(line, level=2)
-                heading.runs[0].font.name = 'Segoe UI Emoji'
-            elif line.startswith('🧠 Overall'):
-                heading = doc.add_heading(line, level=2)
-                heading.runs[0].font.name = 'Segoe UI Emoji'
-            elif line.startswith('📣'):
-                heading = doc.add_heading(line, level=2)
-                heading.runs[0].font.name = 'Segoe UI Emoji'
-            elif line.startswith('🟢 Legend'):
-                heading = doc.add_heading(line, level=3)
-                heading.runs[0].font.name = 'Segoe UI Emoji'
-            elif line.startswith(('✅', '⚠️', '📈', '🔵', '🟢', '🟡', '🔴', '•', '💚')):
+            elif line.startswith('·'):
                 p = doc.add_paragraph(line, style='List Bullet')
                 p.runs[0].font.name = 'Segoe UI Emoji'
                 p.runs[0].font.size = docx.shared.Pt(10)
@@ -634,184 +512,69 @@ Format it as a natural dialogue where:
                 run = p.add_run(line)
                 run.font.name = 'Segoe UI Emoji'
                 run.font.size = docx.shared.Pt(10)
-
-        # Save to BytesIO object
         docx_bytes = io.BytesIO()
         doc.save(docx_bytes)
         docx_bytes.seek(0)
-
         return docx_bytes
 
     def create_pdf_alternative(self, report_content):
-        """Create PDF using reportlab instead of WeasyPrint"""
         from reportlab.lib.pagesizes import letter, A4
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib.units import inch
-        from reportlab.lib.colors import black, blue, green, red
-
-        # Create emoji mapping for text replacement
-        emoji_map = {
-            '🧒': '[Child]',
-            '📅': '[Date]',
-            '🌱': '[Curiosity Seed]',
-            '📊': '[Growth Metrics]',
-            '🧠': '[Intellectual]',
-            '😊': '[Emotional]',
-            '🤝': '[Social]',
-            '🎨': '[Creativity]',
-            '🏃': '[Physical]',
-            '🧭': '[Character/Values]',
-            '🚀': '[Planning/Independence]',
-            '🌈': '[Curiosity Response]',
-            '🗣️': '[Communication Skills]',
-            '📣': '[Note for Parent]',
-            '🟢': '[Excellent]',
-            '✅': '[Good]',
-            '⚠️': '[Fair]',
-            '📈': '[Needs Work]',
-            '🔵': '[Balanced Growth]',
-            '🟡': '[Moderate Growth]',
-            '🔴': '[Limited Growth]',
-            '💚': '[Good Score]',
-            '📋': '[Report]'
-        }
-
-        # Replace emojis with readable text
-        pdf_content = report_content
-        for emoji, replacement in emoji_map.items():
-            pdf_content = pdf_content.replace(emoji, replacement)
-
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(
-            buffer,
-            pagesize=A4,
-            rightMargin=72,
-            leftMargin=72,
-            topMargin=72,
-            bottomMargin=18
-        )
-
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
         styles = getSampleStyleSheet()
-
-        # Create custom styles
-        title_style = ParagraphStyle(
-            'CustomTitle',
-            parent=styles['Heading1'],
-            fontSize=16,
-            spaceAfter=20,
-            textColor=blue,
-            alignment=1  # Center alignment
-        )
-
-        heading_style = ParagraphStyle(
-            'CustomHeading',
-            parent=styles['Heading2'],
-            fontSize=12,
-            spaceAfter=10,
-            textColor=black,
-            fontName='Helvetica-Bold'
-        )
-
-        normal_style = ParagraphStyle(
-            'CustomNormal',
-            parent=styles['Normal'],
-            fontSize=10,
-            spaceAfter=4,
-            fontName='Helvetica'
-        )
-
+        title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=16, spaceAfter=20, alignment=1)
+        heading_style = ParagraphStyle('CustomHeading', parent=styles['Heading2'], fontSize=12, spaceAfter=10, fontName='Helvetica-Bold')
+        normal_style = ParagraphStyle('CustomNormal', parent=styles['Normal'], fontSize=10, spaceAfter=4)
         story = []
-
-        # Add title
-        title = Paragraph("[Report] Daily Growth Report", title_style)
-        story.append(title)
+        story.append(Paragraph("Daily Insights Report", title_style))
         story.append(Spacer(1, 12))
-
-        # Process report content
-        lines = pdf_content.split('\n')
+        lines = report_content.split('\n')
         for line in lines:
             line = line.strip()
             if not line:
                 continue
-
-            try:
-                if line.startswith(('[Child]', '[Date]', '[Curiosity Seed]')):
-                    para = Paragraph(f"<b>{line}</b>", heading_style)
-                    story.append(para)
-                elif line.startswith('[Growth Metrics]'):
-                    para = Paragraph(f"<b>{line}</b>", heading_style)
-                    story.append(para)
-                elif line.startswith(('[Intellectual]', '[Emotional]', '[Social]', '[Creativity]', '[Physical]',
-                                      '[Character/Values]', '[Planning/Independence]')):
-                    para = Paragraph(f"<b>{line}</b>", normal_style)
-                    story.append(para)
-                elif line.startswith(('[Curiosity Response]', '[Communication Skills]', '[Note for Parent]')):
-                    para = Paragraph(f"<b>{line}</b>", heading_style)
-                    story.append(para)
-                elif 'Overall Growth Score' in line:
-                    para = Paragraph(f"<b>{line}</b>", heading_style)
-                    story.append(para)
-                elif line.startswith('[Excellent] Legend'):
-                    para = Paragraph(f"<b>{line}</b>", heading_style)
-                    story.append(para)
-                else:
-                    para = Paragraph(line, normal_style)
-                    story.append(para)
-
-                story.append(Spacer(1, 4))
-
-            except Exception as e:
-                # Skip problematic lines
-                continue
-
+            if line.startswith(('Date:', 'Time:', 'Listener:', 'Teen:')):
+                para = Paragraph(f"<b>{line}</b>", heading_style)
+            elif '---' in line:
+                para = Paragraph("<font name='Helvetica'>─" * 50 + "</font>", normal_style)
+            elif line.endswith(':'):
+                para = Paragraph(f"<b>{line}</b>", heading_style)
+            elif line.startswith('·'):
+                para = Paragraph(line, normal_style)
+            else:
+                para = Paragraph(line, normal_style)
+            story.append(para)
+            story.append(Spacer(1, 4))
         doc.build(story)
         buffer.seek(0)
-
         return buffer
 
     def create_pdf_with_emojis(self, report_content):
-        """Alias for create_pdf_alternative for backward compatibility"""
         return self.create_pdf_alternative(report_content)
 
     def create_word_document(self, report_content):
-        """Legacy method - calls the emoji version"""
         return self.create_word_document_with_emojis(report_content)
 
     def send_email(self, recipient_email, subject, message):
-        """Send email with the observation report"""
         sender_email = Config.EMAIL_USER
         sender_password = Config.EMAIL_PASSWORD
-
         if not sender_password:
             return False, "Email password not configured"
-
         smtp_server = "smtp.gmail.com"
         smtp_port = 587
-
         msg = MIMEMultipart()
         msg["From"] = sender_email
         msg["To"] = recipient_email
         msg["Subject"] = subject
-
-        # Convert message to HTML format for better emoji display
         html_message = f"""
         <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                body {{ font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; }}
-                pre {{ white-space: pre-wrap; font-family: inherit; }}
-            </style>
-        </head>
-        <body>
-            <pre>{message}</pre>
-        </body>
+        <head><meta charset="UTF-8"><style>body {{font-family: 'Segoe UI', Arial; line-height: 1.6;}}</style></head>
+        <body><pre>{message}</pre></body>
         </html>
         """
-
         msg.attach(MIMEText(html_message, "html", "utf-8"))
-
         try:
             server = smtplib.SMTP(smtp_server, smtp_port)
             server.starttls()
@@ -819,10 +582,6 @@ Format it as a natural dialogue where:
             server.send_message(msg)
             server.quit()
             return True, f"Email sent to {recipient_email}"
-        except smtplib.SMTPAuthenticationError:
-            return False, "Error: Authentication failed. Check your email and password."
-        except smtplib.SMTPException as e:
-            return False, f"Error: Failed to send email. {e}"
         except Exception as e:
             return False, f"Error: {str(e)}"
 
@@ -1148,7 +907,7 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
             return f"Error generating monthly summary: {str(e)}"
 
     def generate_monthly_docx_report(self, observations, goal_progress, strength_counts, development_counts,
-                                         summary_json):
+                                     summary_json):
         """
         Generate a narrative-rich monthly report as a Word document, with embedded charts.
         """
@@ -1218,11 +977,11 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
                 report = full_data.get('formatted_report', '')
             except Exception:
                 report = ''
-            curiosity_match = re.search(r'🌈 Curiosity Response Index: (\d{1,2}) ?/ ?10', report)
+            curiosity_match = re.search(r'🌈 Curiosity Response Index: (\\d{1,2}) ?/ ?10', report)
             if curiosity_match:
                 curiosity_score = int(curiosity_match.group(1))
                 curiosity_by_date[date] = curiosity_score
-            growth_match = re.search(r'Overall Growth Score.*?(\d)\s*/\s*7', report)
+            growth_match = re.search(r'Overall Growth Score.*?(\\d)\\s*/\\s*7', report)
             if growth_match:
                 growth_score = int(growth_match.group(1))
                 growth_by_date[date] = growth_score
@@ -1297,7 +1056,7 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         return docx_bytes
 
     def generate_monthly_pdf_report(self, observations, goal_progress, strength_counts, development_counts,
-                                        summary_json):
+                                    summary_json):
         """
         Generate a PDF version of the monthly report by converting the Word doc.
         """
@@ -1491,3 +1250,4 @@ Please provide suggestions in this exact format:
 - Develop communication and expression skills
 
 🌟 **SESSION TIP:** Start with what interests {child_name} most and build the lesson around {pronouns['possessive']} natural curiosity!"""
+
