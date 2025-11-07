@@ -331,16 +331,19 @@ Format it as a natural dialogue where:
             student_name = child['name'] if child and child.get('name') else 'Student'
 
         prompt = f"""
-You are an expert educational observer who writes structured parent insight reports. 
-Analyze the following daily observation text and generate a clear, emotionally aware, and goal-aligned report for the parent. 
-Follow the exact structure and emoji-enhanced section headings shown below. 
-Maintain a reflective, supportive, and professional tone. Avoid repetition. 
-ALWAYS use the provided student name "{student_name}" — never extract names or gender from text. 
-Use these pronouns: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}.  
+        You are an educational observer tasked with generating a comprehensive and accurate Daily Growth Report based on the following observational notes from a student session. Pay special attention to any achievements, learning moments, and areas for growth. The report should be structured, insightful, and easy to understand for parents. Add postives and negatives based on the text content provided. 
 
-Report must strictly follow this structure and include all sections (with emojis).
-Each section must have meaningful, specific content — no placeholders or generic filler.
-Keep formatting clean and consistent, ready to send as-is.
+        CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
+        - NEVER extract or use any name from the audio transcription or text content
+        - ALWAYS use the exact name provided: {student_name}
+        - Use these pronouns for the student throughout the report: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}
+        - When referring to the student, use "{student_name}" or the appropriate pronouns ({pronouns['subject']}/{pronouns['object']}/{pronouns['possessive']})
+        - Make sure the report is grammatically correct and adheres to proper English syntax and semantics.
+        Please carefully analyze the given text and complete the report using the exact format, emojis, section titles, and scoring rubrics as described below. The student should be referred to consistently using their provided name "{student_name}" and the appropriate pronouns - never use names from the audio/text content.
+
+        📌 Important Instructions for the Report:
+        - Follow the format exactly as shown below.
+        - Make reasonable inferences for items not explicitly stated in the text.
 
 ======================================================
 Session Details
