@@ -23,6 +23,7 @@
             margin: 0;
             padding: 0;
             background: linear-gradient(to bottom right, #e6f6ff, #fdf9f3);
+            position: relative; /* Needed for the z-index of child elements */
         }
 
         /* * --- NEW RULE --- 
@@ -151,79 +152,65 @@
             padding: 1.5rem 0 1rem 0;
             font-size: 1rem;
             position: relative;
-            /* Added for footer image positioning */
-            display: flex; /* Use flexbox to align items */
-            justify-content: center; /* Center content horizontally */
-            align-items: center; /* Center content vertically */
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        /* NEW: Footer image styling */
         .footer-image-container {
             position: absolute;
-            right: 20px; /* Adjust as needed */
-            bottom: 10px; /* Adjust as needed */
-            z-index: 1; /* Ensure it's above other footer content if necessary */
+            right: 20px;
+            bottom: 10px;
+            z-index: 1;
         }
 
         .footer-image {
-            height: 80px; /* Adjust size as needed */
+            height: 80px;
             width: auto;
-            border-radius: 8px; /* Optional: adds rounded corners */
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Optional: adds a subtle shadow */
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         }
 
-        /* ------------------ KID-FRIENDLY GRAPHICS ------------------ */
-        .background-shapes { position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: -1; }
-        .shape { position: absolute; opacity: 0.80; animation: floaty 10s infinite ease-in-out; }
-        .shape img { width: 100px; height: auto; }
-
-        @keyframes floaty {
-            0% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-40px) rotate(10deg); }
-            100% { transform: translateY(0) rotate(0deg); }
-        }
-
-        .floating-mascot {
+        /* --- CHANGE: Central Watermark Background --- */
+        .background-shapes {
             position: fixed;
-            bottom: 10px;
-            left: 10px;
-            width: 130px;
-            z-index: 10;
-            opacity: 0.20;
-            animation: bounce 4s ease-in-out infinite;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Puts it behind all other content */
+            
+            /* Center the logo */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            /* Prevent it from being clicked or selected */
+            pointer-events: none;
+            overflow: hidden; /* Hide parts of the rotated element that go off-screen */
         }
 
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
-        }
-
-        .unified-navbar::after, .footer-section::after {
+        .background-shapes::before {
             content: "";
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
-            pointer-events: none;
-            animation: glowPulse 6s infinite ease-in-out;
+            width: 300%; /* Make it larger to cover the corners after rotation */
+            height: 300%;
+            
+            /* Apply the logo image */
+            background-image: url("{{ url_for('static', filename='images/Screenshot from 2025-10-09 02-11-57.png') }}");
+            background-repeat: no-repeat;
+            background-position: center center;
+            
+            /* Responsive size: 70% of the smallest viewport dimension */
+            background-size: 100vmin;
+            
+            /* Make it a very subtle watermark */
+            opacity: 0.10;
+            
+            /* The key part: rotate it diagonally */
+            transform: rotate(-15deg);
         }
-
-        @keyframes glowPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.8; } }
-
-        .bubble {
-            position: absolute;
-            bottom: -100px;
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            animation: rise 15s infinite ease-in;
-        }
-
-        @keyframes rise {
-            0% { transform: translateY(0) scale(1); opacity: 1; }
-            100% { transform: translateY(-1200px) scale(1.5); opacity: 0; }
-        }
-
-        nav, footer, .footer-section { position: relative; z-index: 10; }
-
+        
         /* ------------------ RESPONSIVE ------------------ */
         @media (max-width: 991px) {
             .navbar-toggler { border-color: rgba(255, 255, 255, 0.5) !important; }
@@ -235,7 +222,6 @@
             .btn-login, .btn-get-started { margin-top: 0.75rem; width: auto; }
             .simple-links-row { flex-direction: column; gap: 0.6rem; }
 
-            /* Adjust footer image for smaller screens if needed */
             .footer-image-container {
                 right: 10px;
                 bottom: 5px;
@@ -248,25 +234,7 @@
 </head>
 
 <body>
-    <div class="background-shapes">
-    <div class="shape" style="top:10%; left:5%; animation-delay:0s;">
-        <img src="{{ url_for('static', filename='images/beach-ball.png') }}" alt="Beach Ball">
-    </div>
-    <div class="shape" style="top:40%; left:80%; animation-delay:3s;">
-        <img src="{{ url_for('static', filename='images/rocket.png') }}" alt="Rocket">
-    </div>
-    <div class="shape" style="top:70%; left:15%; animation-delay:5s;">
-        <img src="{{ url_for('static', filename='images/pinwheel.png') }}" alt="Pinwheel">
-    </div>
-    <div class="shape" style="top:20%; left:60%; animation-delay:8s;">
-        <img src="{{ url_for('static', filename='images/teddy-bear.png') }}" alt="Teddy Bear">
-    </div>
-
-</div>
-
-<img src="{{ url_for('static', filename='images/alphabetical.png') }}" alt="Mascot" class="floating-mascot">
-
-    <div id="bubble-container"></div>
+    <div class="background-shapes"></div>
 
     <nav class="navbar navbar-expand-lg unified-navbar">
         <div class="container-fluid px-4">
@@ -352,22 +320,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
-    <script>
-        const container = document.getElementById("bubble-container");
-        if (container) {
-            for (let i = 0; i < 15; i++) {
-                const bubble = document.createElement("div");
-                bubble.classList.add("bubble");
-                const size = Math.random() * 50 + 20;
-                bubble.style.width = `${size}px`;
-                bubble.style.height = `${size}px`;
-                bubble.style.left = `${Math.random() * 100}%`;
-                bubble.style.animationDuration = `${10 + Math.random() * 10}s`;
-                container.appendChild(bubble);
-            }
-        }
-    </script>
 
     {% block scripts %}{% endblock %}
 </body>

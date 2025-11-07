@@ -15,7 +15,6 @@
 </div>
 
 {% if child %}
-<!-- Child Information Card -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
@@ -41,7 +40,7 @@
                     </div>
                     <div class="col-md-4 text-end">
                         <div class="btn-group" role="group">
-                            <a href="#reports" class="btn btn-primary">
+                            <a href="#reports" class="btn btn-custom-view">
                                 <i class="fas fa-file-alt me-1"></i>View Reports
                             </a>
                             <a href="{{ url_for('parent.messages') }}" class="btn btn-outline-primary">
@@ -55,10 +54,9 @@
     </div>
 </div>
 
-<!-- Quick Stats -->
 <div class="row mb-4">
     <div class="col-md-4">
-        <div class="card bg-primary text-white">
+        <div class="card bg-summary-1 text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
@@ -73,7 +71,7 @@
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card bg-success text-white">
+        <div class="card bg-summary-2 text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
@@ -88,7 +86,7 @@
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card bg-info text-white">
+        <div class="card bg-summary-3 text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
@@ -104,7 +102,6 @@
     </div>
 </div>
 
-<!-- Recent Reports -->
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -132,7 +129,7 @@
                                     <strong>Theme:</strong> {{ report.theme_of_day[:50] }}...
                                 </p>
                                 {% endif %}
-                                <a href="{{ url_for('parent.reports') }}#report-{{ report.id }}" class="btn btn-primary btn-sm">
+                                <a href="{{ url_for('parent.reports') }}#report-{{ report.id }}" class="btn btn-custom-view btn-sm">
                                     View Details
                                 </a>
                             </div>
@@ -153,7 +150,6 @@
 </div>
 
 {% else %}
-<!-- No Child Assigned -->
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -161,7 +157,7 @@
                 <i class="fas fa-child fa-3x text-muted mb-3"></i>
                 <h5 class="text-muted">No Child Assigned</h5>
                 <p class="text-muted">Please contact your administrator to assign a child to your account.</p>
-                <a href="mailto:admin@learningobserver.com" class="btn btn-primary">
+                <a href="mailto:admin@learningobserver.com" class="btn btn-custom-view">
                     Contact Administrator
                 </a>
             </div>
@@ -169,4 +165,45 @@
     </div>
 </div>
 {% endif %}
+
+<style>
+/* Summary Card Palette (from Observer Dashboard) */
+.bg-summary-1 { background-color: #1d3654 !important; border-color: #1d3654 !important; }
+.bg-summary-2 { background-color: #204a62 !important; border-color: #204a62 !important; }
+.bg-summary-3 { background-color: #29807a !important; border-color: #29807a !important; }
+
+/* Hover states */
+.bg-summary-1:hover { background-color: #162942 !important; }
+.bg-summary-2:hover { background-color: #193b4d !important; }
+.bg-summary-3:hover { background-color: #216863 !important; }
+
+/* Card hover transition */
+.card[class*="bg-summary-"] {
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.card[class*="bg-summary-"]:hover {
+    transform: translateY(-2px);
+}
+
+/* --- CHANGED: Custom button color to Gold Accent --- */
+.btn-custom-view {
+    background-color: #216863 !important;
+    border-color: #216863 !important;
+    color: #f0f3f6ff !important; /* Dark text for contrast */
+    font-weight: 500;
+}
+
+.btn-custom-view:hover {
+    background-color: #216863 !important; /* Darker gold for hover */
+    border-color: #216863 !important;
+    color: #edf0f3ff !important;
+}
+
+.btn-outline-primary{
+    border-color: #216863 !important;
+    color: #216863 !important; /* Dark text for contrast */
+    font-weight: 500;
+}
+</style>
 {% endblock %}

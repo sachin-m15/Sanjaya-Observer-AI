@@ -5,10 +5,11 @@
     position: fixed;
     bottom: 100px;
     right: 30px;
-    width: 60px;
+    width: auto; /* CHANGED: Allow width to fit content */
     height: 60px;
+    padding: 0 20px; /* ADDED: Horizontal padding for text */
     background: linear-gradient(135deg, #1D3654, #29867F);
-    border-radius: 50%;
+    border-radius: 30px; /* CHANGED: Creates a pill shape */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -31,8 +32,9 @@
 }
 
 #chatbot-icon::before {
-    content: '💬';
-    font-size: 30px;
+    content: '💬 Chat with Us';
+    font-size: 16px; /* CHANGED: Adjusted font size to fit */
+    font-weight: 600; /* ADDED: For better readability */
     color: white;
 }
 
@@ -292,9 +294,11 @@
         right: 20px;
         width: 55px;
         height: 55px;
+        padding: 0; /* ADDED: Reset padding for mobile */
     }
     
     #chatbot-icon::before {
+        content: '💬'; /* CHANGED: Show only icon on mobile */
         font-size: 22px;
     }
 }

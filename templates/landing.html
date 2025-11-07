@@ -33,8 +33,6 @@
         overflow-x: hidden;
         background-color: var(--light-bg);
         background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2329867F' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-        
-        /* Ensures space below the fixed navbar */
         padding-top: 75px; 
     }
 
@@ -84,6 +82,7 @@
         display: flex;
         align-items: center;
         text-align: center;
+        position: relative; /* Needed for canvas positioning */
     }
     
     .hero-content {
@@ -94,7 +93,31 @@
         font-size: clamp(2.5rem, 6vw, 4.5rem);
         line-height: 1.1;
         text-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .dynamic-subtitle {
+        display: inline-block;
+        font-size: clamp(1.5rem, 4vw, 2.5rem);
+        font-family: 'Avenir Next Arabic', sans-serif;
+        font-weight: 400;
+        color: var(--gold);
+        position: relative;
+        min-height: 45px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .dynamic-subtitle::after {
+        content: '|';
+        font-weight: 300;
+        color: var(--gold);
+        animation: blink 1s infinite;
+        margin-left: 8px;
+    }
+
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
     }
 
     .hero-subtitle {
@@ -131,12 +154,38 @@
     }
 
     .badge .badge-icon {
-        font-size: 1.2rem; /* Adjusted size for Font Awesome */
+        font-size: 1.2rem;
         margin-right: 0.75rem;
-        width: 24px; /* Ensures alignment */
+        width: 24px;
         text-align: center;
     }
     
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .badge {
+        opacity: 0; 
+        animation: fadeInUp 0.5s ease-out forwards;
+    }
+    .badge:nth-child(1) { animation-delay: 0.2s; }
+    .badge:nth-child(2) { animation-delay: 0.4s; }
+    .badge:nth-child(3) { animation-delay: 0.6s; }
+    
+    /* --- Interactive Canvas Background --- */
+    #hero-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+    }
+    .hero-section .container {
+        position: relative;
+        z-index: 2;
+    }
+
     /* --- 3. Profile (Founder) Section --- */
     .profile-section .container {
         max-width: 1100px;
@@ -169,31 +218,15 @@
         margin-bottom: 1rem;
     }
     
-    .profile-name {
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: var(--navy);
-    }
-    
-    .profile-info {
-        flex: 1;
-    }
-    
+    .profile-name { font-size: 1.3rem; font-weight: 700; color: var(--navy); }
+    .profile-info { flex: 1; }
     .profile-info-title {
         font-size: clamp(1.8rem, 4vw, 2.2rem);
         margin-bottom: 1rem;
         background: linear-gradient(135deg, var(--navy) 0%, var(--teal) 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    
-    .profile-description {
-        font-size: 1.1rem;
-        color: #334155;
-        margin-bottom: 1.5rem;
-    }
-    
+    .profile-description { font-size: 1.1rem; color: #334155; margin-bottom: 1.5rem; }
     .profile-highlight {
         border-left: 4px solid var(--gold);
         padding: 1.5rem;
@@ -205,222 +238,86 @@
     }
 
     /* --- 4. Features Section --- */
-    .feature-grid {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2rem;
-    }
-
-    .feature-grid-row {
-        display: grid;
-        gap: 2rem;
-        width: 100%;
-    }
-
-    .feature-grid-row.top-row {
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    }
-
-    .feature-grid-row.bottom-row {
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        max-width: calc(66.66% + 1rem);
-    }
-
+    .feature-grid { display: flex; flex-direction: column; align-items: center; gap: 2rem; }
+    .feature-grid-row { display: grid; gap: 2rem; width: 100%; }
+    .feature-grid-row.top-row { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .feature-grid-row.bottom-row { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); max-width: calc(66.66% + 1rem); }
     .feature-card {
-        background: var(--white);
-        border-radius: 16px;
-        padding: 2.5rem;
-        box-shadow: 0 8px 30px rgba(41, 134, 127, 0.08);
-        border: 1px solid var(--border-color);
-        text-align: center;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background: var(--white); border-radius: 16px; padding: 2.5rem;
+        box-shadow: 0 8px 30px rgba(41, 134, 127, 0.08); border: 1px solid var(--border-color);
+        text-align: center; transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
-    
-    .feature-icon { 
-        font-size: 2.5rem; /* Adjusted for consistency */
-        margin-bottom: 1.5rem; 
-        color: var(--teal); /* Added color for professional look */
-    }
-    .feature-title { 
-        font-size: 1.3rem; 
-        color: var(--navy); 
-        margin-bottom: 0.75rem; 
-    }
-    .feature-description { 
-        color: var(--text-muted); 
-    }
+    .feature-icon { font-size: 2.5rem; margin-bottom: 1.5rem; color: var(--teal); }
+    .feature-title { font-size: 1.3rem; color: var(--navy); margin-bottom: 0.75rem; }
+    .feature-description { color: var(--text-muted); }
     
     /* --- 5. How It Works Section --- */
     .how-it-works-section .container {
-        max-width: 1100px;
-        background-color: var(--white);
-        padding: 3rem 4rem;
-        border-radius: 24px;
-        box-shadow: 0 15px 40px rgba(41, 134, 127, 0.08);
+        max-width: 1100px; background-color: var(--white); padding: 3rem 4rem;
+        border-radius: 24px; box-shadow: 0 15px 40px rgba(41, 134, 127, 0.08);
     }
-    
-    .how-it-works-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 2rem 4rem;
-    }
-    
+    .how-it-works-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem 4rem; }
     .step-card {
         background: linear-gradient(135deg, var(--navy) 0%, var(--teal) 100%);
-        color: var(--white);
-        padding: 1.5rem 1rem;
-        border-radius: 12px;
-        text-align: center;
-        position: relative;
-        box-shadow: 0 5px 15px rgba(29, 54, 84, 0.15);
+        color: var(--white); padding: 1.5rem 1rem; border-radius: 12px; text-align: center;
+        position: relative; box-shadow: 0 5px 15px rgba(29, 54, 84, 0.15);
         transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
-
     .step-card:not(:nth-child(3n))::after {
-        content: '';
-        position: absolute;
-        left: 100%;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 4rem;
-        height: 2px;
+        content: ''; position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+        width: 4rem; height: 2px;
         background: repeating-linear-gradient(to right, var(--pdf-grey-beige) 0, var(--pdf-grey-beige) 4px, transparent 4px, transparent 8px);
     }
-
     .step-number {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 0.75rem auto;
-        width: 30px;
-        height: 30px;
-        border: 2px solid var(--white);
-        color: var(--white);
-        border-radius: 50%;
-        font-weight: 700;
-        font-size: 1rem;
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 0.75rem auto; width: 30px; height: 30px;
+        border: 2px solid var(--white); color: var(--white); border-radius: 50%;
+        font-weight: 700; font-size: 1rem;
     }
-
-    .step-description {
-        font-size: 1rem;
-        font-weight: 500;
-        line-height: 1.4;
-    }
+    .step-description { font-size: 1rem; font-weight: 500; line-height: 1.4; }
 
     /* --- 6. Testimonials Section --- */
     .testimonials-section .container {
-        max-width: 1100px;
-        background: linear-gradient(135deg, var(--light-bg) 40%, var(--light-bg-alt) 100%);
-        padding: 3rem 4rem;
-        border-radius: 24px;
-        box-shadow: 0 15px 40px rgba(41, 134, 127, 0.08);
+        max-width: 1100px; background: linear-gradient(135deg, var(--light-bg) 40%, var(--light-bg-alt) 100%);
+        padding: 3rem 4rem; border-radius: 24px; box-shadow: 0 15px 40px rgba(41, 134, 127, 0.08);
     }
-
-    .testimonials-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 2rem;
-    }
-    
+    .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; }
     .testimonial-card {
-        background: var(--white);
-        border-radius: 16px;
-        padding: 2rem;
-        box-shadow: 0 6px 24px rgba(29, 54, 84, 0.08);
-        display: flex;
-        flex-direction: column;
+        background: var(--white); border-radius: 16px; padding: 2rem;
+        box-shadow: 0 6px 24px rgba(29, 54, 84, 0.08); display: flex; flex-direction: column;
         transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
-    
-    .testimonial-quote {
-        color: var(--text-dark);
-        font-style: italic;
-        margin-bottom: 1.5rem;
-        flex-grow: 1;
-    }
-    
-    .testimonial-author { 
-        font-weight: 700; 
-        color: var(--teal); 
-    }
-    .testimonial-role { 
-        color: var(--text-muted); 
-        font-size: 0.9rem; 
-    }
+    .testimonial-quote { color: var(--text-dark); font-style: italic; margin-bottom: 1.5rem; flex-grow: 1; }
+    .testimonial-author { font-weight: 700; color: var(--teal); }
+    .testimonial-role { color: var(--text-muted); font-size: 0.9rem; }
     
     /* --- 7. Quote Section --- */
-    .quote-section {
-        text-align: center;
-    }
-    
+    .quote-section { text-align: center; }
     .quote-text {
-        font-size: clamp(1.5rem, 4vw, 2.2rem);
-        font-weight: 300;
-        font-style: italic;
-        line-height: 1.4;
-        max-width: 800px;
-        margin: 0 auto;
-        color: var(--navy);
-        position: relative;
+        font-size: clamp(1.5rem, 4vw, 2.2rem); font-weight: 300; font-style: italic;
+        line-height: 1.4; max-width: 800px; margin: 0 auto; color: var(--navy); position: relative;
     }
-    
     .quote-text::before, .quote-text::after {
-        content: '"';
-        font-size: 6rem;
-        color: var(--teal);
-        position: absolute;
-        font-family: serif;
-        opacity: 0.2;
+        content: '"'; font-size: 6rem; color: var(--teal); position: absolute;
+        font-family: serif; opacity: 0.2;
     }
-    
-    .quote-text::before { 
-        top: -2rem; 
-        left: -2rem; 
-    }
-    .quote-text::after { 
-        bottom: -4rem; 
-        right: -2rem; 
-    }
+    .quote-text::before { top: -2rem; left: -2rem; }
+    .quote-text::after { bottom: -4rem; right: -2rem; }
 
     /* --- 8. Trust Section --- */
-    .trust-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 2rem;
-    }
+    .trust-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
     .trust-item {
-        background: var(--white);
-        border-radius: 16px;
-        padding: 2.5rem;
-        box-shadow: 0 8px 30px rgba(41, 134, 127, 0.08);
-        border: 1px solid var(--border-color);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        text-align: center;
+        background: var(--white); border-radius: 16px; padding: 2.5rem;
+        box-shadow: 0 8px 30px rgba(41, 134, 127, 0.08); border: 1px solid var(--border-color);
+        transition: transform 0.3s ease, box-shadow 0.3s ease; text-align: center;
     }
-    .trust-item:hover {
-        transform: translateY(-10px);
-        box-shadow: 0 20px 40px rgba(41, 134, 127, 0.15);
-    }
-    .trust-icon { 
-        font-size: 2.5rem; /* Adjusted for consistency */
-        margin-bottom: 1.5rem; 
-        color: var(--teal); /* Added color */
-    }
-    .trust-title { 
-        font-size: 1.3rem; 
-        color: var(--navy); 
-        margin-bottom: 0.75rem; 
-    }
-    .trust-desc { 
-        color: var(--text-muted); 
-    }
+    .trust-item:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(41, 134, 127, 0.15); }
+    .trust-icon { font-size: 2.5rem; margin-bottom: 1.5rem; color: var(--teal); }
+    .trust-title { font-size: 1.3rem; color: var(--navy); margin-bottom: 0.75rem; }
+    .trust-desc { color: var(--text-muted); }
 
-    /* --- Hover rule for other cards --- */
-    .profile-section .container:hover,
-    .feature-card:hover,
-    .step-card:hover,
-    .testimonial-card:hover {
+    /* Hover rule for other cards */
+    .profile-section .container:hover, .feature-card:hover, .step-card:hover, .testimonial-card:hover {
         transform: translateY(-10px);
         box-shadow: 0 20px 40px rgba(41, 134, 127, 0.15);
     }
@@ -428,39 +325,20 @@
     /* --- 9. Responsive Design --- */
     @media (max-width: 992px) {
         .feature-grid-row.bottom-row { max-width: 100%; }
-        .how-it-works-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 3rem 2rem;
-        }
+        .how-it-works-grid { grid-template-columns: repeat(2, 1fr); gap: 3rem 2rem; }
         .step-card:not(:nth-child(3n))::after { content: none; }
         .step-card:not(:nth-child(2n))::after {
-            content: '';
-            position: absolute;
-            left: 100%;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 2rem;
-            height: 2px;
+            content: ''; position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+            width: 2rem; height: 2px;
             background: repeating-linear-gradient(to right, var(--pdf-grey-beige) 0, var(--pdf-grey-beige) 4px, transparent 4px, transparent 8px);
         }
     }
 
     @media (max-width: 768px) {
         .section { padding: 3rem 0; }
-        .profile-section .container,
-        .how-it-works-section .container,
-        .testimonials-section .container {
-            padding: 2rem;
-        }
-        .profile-container {
-            flex-direction: column;
-            text-align: center;
-            gap: 2rem;
-        }
-        .badges-row {
-            flex-direction: column;
-            align-items: center;
-        }
+        .profile-section .container, .how-it-works-section .container, .testimonials-section .container { padding: 2rem; }
+        .profile-container { flex-direction: column; text-align: center; gap: 2rem; }
+        .badges-row { flex-direction: column; align-items: center; }
         .quote-text::before, .quote-text::after { display: none; }
         .how-it-works-grid { grid-template-columns: 1fr; }
         .step-card::after { content: none !important; }
@@ -469,9 +347,11 @@
 
 
 <section class="hero-section">
+    <canvas id="hero-canvas"></canvas>
     <div class="container">
         <div class="hero-content">
             <h1 class="hero-title">Sanjaya – The Observer</h1>
+            <span class="dynamic-subtitle"></span>
             <p class="hero-subtitle">Every child needs someone who truly listens.</p>
             <div class="badges-row">
                 <div class="badge">
@@ -568,52 +448,31 @@
         <div class="testimonials-grid">
             <div class="testimonial-card">
                 <p class="testimonial-quote">"I am very happy with this programme as I can see a remarkable change in my child. She was an introvert but now she is opening up and is more confident. In fact, she has made me a good listener. I extend my full support to this programme."</p>
-                <div>
-                    <div class="testimonial-author">Mr. Shah</div>
-                    <div class="testimonial-role">Parent</div>
-                </div>
+                <div><div class="testimonial-author">Mr. Shah</div><div class="testimonial-role">Parent</div></div>
             </div>
             <div class="testimonial-card">
                 <p class="testimonial-quote">"It is a very innovative programme and need of the hour. Things which the children are reluctant to share with their parents, they share with ma'am because they have a patient listener. Both my children have opened up and are more confident."</p>
-                <div>
-                    <div class="testimonial-author">Mr. Dey</div>
-                    <div class="testimonial-role">Parent</div>
-                </div>
+                <div><div class="testimonial-author">Mr. Dey</div><div class="testimonial-role">Parent</div></div>
             </div>
             <div class="testimonial-card">
                 <p class="testimonial-quote">"I can see a vast difference for better in my daughter. She has become very regular in her work. She is very excited to share her day’s activities. I can see happiness on her face while talking to ma'am."</p>
-                <div>
-                    <div class="testimonial-author">Mrs. Paliwal</div>
-                    <div class="testimonial-role">Parent</div>
-                </div>
+                <div><div class="testimonial-author">Mrs. Paliwal</div><div class="testimonial-role">Parent</div></div>
             </div>
             <div class="testimonial-card">
                 <p class="testimonial-quote">"After going through the growth reports I have realized that my child’s study habits and social interactions are very positive. The reports are helping me to guide him in the right direction. I am very satisfied with the programme."</p>
-                <div>
-                    <div class="testimonial-author">Mrs. Dsouza</div>
-                    <div class="testimonial-role">Parent</div>
-                </div>
+                <div><div class="testimonial-author">Mrs. Dsouza</div><div class="testimonial-role">Parent</div></div>
             </div>
             <div class="testimonial-card">
                 <p class="testimonial-quote">"This platform allows me to share my views and ideas freely. It helps me express positive thoughts and open up about negative ones, helping me rectify errors in social and academic life."</p>
-                <div>
-                    <div class="testimonial-author">Daivik</div>
-                    <div class="testimonial-role">Student, 16 years</div>
-                </div>
+                <div><div class="testimonial-author">Daivik</div><div class="testimonial-role">Student, 16 years</div></div>
             </div>
             <div class="testimonial-card">
                 <p class="testimonial-quote">"I am happy because I get a chance to talk, share, narrate stories and recite poems daily."</p>
-                <div>
-                    <div class="testimonial-author">Ovi</div>
-                    <div class="testimonial-role">Student, 6 years</div>
-                </div>
+                <div><div class="testimonial-author">Ovi</div><div class="testimonial-role">Student, 6 years</div></div>
             </div>
             <div class="testimonial-card">
                 <p class="testimonial-quote">"This programme has allowed me to say whatever I want without being objected. I can relieve myself of the things I want to say."</p>
-                <div>
-                    <div class="testimonial-author">Arnav</div>
-                    <div class="testimonial-role">Student, 12 years</div>
-                </div>
+                <div><div class="testimonial-author">Arnav</div><div class="testimonial-role">Student, 12 years</div></div>
             </div>
         </div>
     </div>
@@ -669,5 +528,117 @@
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
 <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Typing Effect Script ---
+    const typingElement = document.querySelector('.dynamic-subtitle');
+    const wordsToType = ["A Listener", "A Guide", "A Friend", "A Mentor"];
+    const typingSpeed = 150; 
+    const deletingSpeed = 100;
+    const delayBetweenWords = 2000;
+
+    let wordIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+
+    function typeEffect() {
+        const currentWord = wordsToType[wordIndex];
+        let displayText = isDeleting ? currentWord.substring(0, charIndex - 1) : currentWord.substring(0, charIndex + 1);
+        typingElement.textContent = displayText;
+
+        if (isDeleting) charIndex--; else charIndex++;
+
+        let speed = isDeleting ? deletingSpeed : typingSpeed;
+
+        if (!isDeleting && charIndex === currentWord.length) {
+            speed = delayBetweenWords;
+            isDeleting = true;
+        } else if (isDeleting && charIndex === 0) {
+            isDeleting = false;
+            wordIndex = (wordIndex + 1) % wordsToType.length;
+        }
+        
+        setTimeout(typeEffect, speed);
+    }
+    typeEffect();
+});
+</script>
+
+<script>
+    // --- Interactive Constellation Background Script ---
+    const canvas = document.getElementById('hero-canvas');
+    const ctx = canvas.getContext('2d');
+    const heroSection = document.querySelector('.hero-section');
+
+    let particlesArray;
+
+    function init() {
+        canvas.width = heroSection.offsetWidth;
+        canvas.height = heroSection.offsetHeight;
+        
+        particlesArray = [];
+        let numberOfParticles = (canvas.height * canvas.width) / 9000;
+        for (let i = 0; i < numberOfParticles; i++) {
+            let size = (Math.random() * 2) + 1;
+            let x = Math.random() * (innerWidth - size * 2) + size * 2;
+            let y = Math.random() * (innerHeight - size * 2) + size * 2;
+            let directionX = (Math.random() * 0.5) - 0.25;
+            let directionY = (Math.random() * 0.5) - 0.25;
+            let color = 'rgba(216, 175, 83, 0.4)';
+
+            particlesArray.push(new Particle(x, y, directionX, directionY, size, color));
+        }
+    }
+
+    class Particle {
+        constructor(x, y, directionX, directionY, size, color) {
+            this.x = x; this.y = y; this.directionX = directionX;
+            this.directionY = directionY; this.size = size; this.color = color;
+        }
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2, false);
+            ctx.fillStyle = 'rgba(216, 175, 83, 0.4)';
+            ctx.fill();
+        }
+        update() {
+            if (this.x > canvas.width || this.x < 0) this.directionX = -this.directionX;
+            if (this.y > canvas.height || this.y < 0) this.directionY = -this.directionY;
+            this.x += this.directionX;
+            this.y += this.directionY;
+            this.draw();
+        }
+    }
+
+    function connect() {
+        let opacityValue = 1;
+        for (let a = 0; a < particlesArray.length; a++) {
+            for (let b = a; b < particlesArray.length; b++) {
+                let distance = Math.pow(particlesArray[a].x - particlesArray[b].x, 2) + Math.pow(particlesArray[a].y - particlesArray[b].y, 2);
+                if (distance < (canvas.width / 7) * (canvas.height / 7)) {
+                    opacityValue = 1 - (distance / 20000);
+                    ctx.strokeStyle = `rgba(216, 175, 83, ${opacityValue * 0.3})`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(particlesArray[a].x, particlesArray[a].y);
+                    ctx.lineTo(particlesArray[b].x, particlesArray[b].y);
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+    
+    function animate() {
+        requestAnimationFrame(animate);
+        ctx.clearRect(0, 0, innerWidth, innerHeight);
+        for (let i = 0; i < particlesArray.length; i++) particlesArray[i].update();
+        connect();
+    }
+
+    window.addEventListener('resize', init);
+    init();
+    animate();
+</script>
 
 {% endblock %}

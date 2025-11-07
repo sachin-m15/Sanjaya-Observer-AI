@@ -10,7 +10,6 @@
         </h1>
         <p class="text-muted">Welcome back! Here's an overview of your assigned children and their scheduled reports.</p>
         
-        <!-- Orientation Guide link: hidden in text -->
         <p class="mt-2">
             <span class="text-muted">
                 Need an overview? Visit the 
@@ -22,14 +21,12 @@
                 for observers.
             </span>
         </p>
-        <!-- End Orientation Guide link -->
-    </div>
+        </div>
 </div>
 
-<!-- Summary Cards -->
 <div class="row mb-4">
     <div class="col-md-3">
-        <div class="card bg-primary text-white">
+        <div class="card bg-summary-1 text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
@@ -44,7 +41,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-success text-white">
+        <div class="card bg-summary-2 text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
@@ -59,7 +56,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-info text-white">
+        <div class="card bg-summary-3 text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
@@ -74,7 +71,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-warning text-white">
+        <div class="card bg-summary-4 text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
@@ -90,7 +87,6 @@
     </div>
 </div>
 
-<!-- Scheduled Reports Section -->
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -182,7 +178,6 @@
     </div>
 </div>
 
-<!-- FIXED: Quick Actions - All in One Line and Evenly Spaced -->
 <div class="row mt-4">
     <div class="col-12">
         <div class="card">
@@ -191,37 +186,32 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <!-- Process Observation Card -->
                     <div class="col">
-                        <a href="{{ url_for('observer.process_observation') }}" class="btn btn-primary w-100 h-100 d-flex flex-column justify-content-center align-items-center quick-action-btn">
+                        <a href="{{ url_for('observer.process_observation') }}" class="btn bg-action-1 text-white w-100 h-100 d-flex flex-column justify-content-center align-items-center quick-action-btn">
                             <i class="fas fa-camera fa-2x mb-2"></i>
                             <span>Process Observation</span>
                         </a>
                     </div>
-                    <!-- Manage Milestones Card -->
                     <div class="col">
-                        <a href="{{ url_for('observer.goals') }}" class="btn btn-info w-100 h-100 d-flex flex-column justify-content-center align-items-center quick-action-btn">
+                        <a href="{{ url_for('observer.goals') }}" class="btn bg-action-2 text-white w-100 h-100 d-flex flex-column justify-content-center align-items-center quick-action-btn">
                             <i class="fas fa-bullseye fa-2x mb-2"></i>
                             <span>Manage Milestones</span>
                         </a>
                     </div>
-                    <!-- Messages Card -->
                     <div class="col">
-                        <a href="{{ url_for('observer.messages') }}" class="btn btn-success w-100 h-100 d-flex flex-column justify-content-center align-items-center quick-action-btn">
+                        <a href="{{ url_for('observer.messages') }}" class="btn bg-action-3 text-white w-100 h-100 d-flex flex-column justify-content-center align-items-center quick-action-btn">
                             <i class="fas fa-envelope fa-2x mb-2"></i>
                             <span>Messages</span>
                         </a>
                     </div>
-                    <!-- Monthly Reports Card -->
                     <div class="col">
-                        <a href="{{ url_for('observer.monthly_reports') }}" class="btn btn-warning w-100 h-100 d-flex flex-column justify-content-center align-items-center quick-action-btn">
+                        <a href="{{ url_for('observer.monthly_reports') }}" class="btn bg-action-4 text-white w-100 h-100 d-flex flex-column justify-content-center align-items-center quick-action-btn">
                             <i class="fas fa-chart-bar fa-2x mb-2"></i>
                             <span>Monthly Reports</span>
                         </a>
                     </div>
-                    <!-- Peer Reviews Card -->
                     <div class="col">
-                        <a href="{{ url_for('observer.peer_reviews') }}" class="btn btn-secondary w-100 h-100 d-flex flex-column justify-content-center align-items-center quick-action-btn">
+                        <a href="{{ url_for('observer.peer_reviews') }}" class="btn bg-action-5 text-white w-100 h-100 d-flex flex-column justify-content-center align-items-center quick-action-btn">
                             <i class="fas fa-users fa-2x mb-2"></i>
                             <span>Peer Reviews</span>
                         </a>
@@ -232,7 +222,6 @@
     </div>
 </div>
 
-<!-- Schedule Modal -->
 <div class="modal fade" id="scheduleModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -262,10 +251,30 @@
     </div>
 </div>
 
-<!-- Alert Container -->
 <div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>
 
 <style>
+/* --- ADDED: New, highly accurate color palette based on your screenshot --- */
+/* Summary Card Palette */
+.bg-summary-1 { background-color: #1d3654 !important; border-color: #204a62 !important; }
+.bg-summary-2 { background-color: #204a62 !important; border-color: #29807a !important; }
+.bg-summary-3 { background-color: #29807a !important; border-color: #29867f !important; }
+.bg-summary-4 { background-color: #29867f !important; border-color: #1c9a90ff !important; }
+
+/* Quick Action Button Palette */
+.bg-action-1 { background-color: #1d3654 !important; border-color: #1d3654 !important; }
+.bg-action-2 { background-color: #204a62 !important; border-color: #204a62 !important; }
+.bg-action-3 { background-color: #29807a !important; border-color: #29807a !important; }
+.bg-action-4 { background-color: #29867f !important; border-color: #29867f !important; }
+.bg-action-5 { background-color: #29867f !important; border-color: #29867f !important; }
+
+/* Hover states for the new palette */
+.bg-summary-1:hover, .bg-action-1:hover, .bg-action-2:hover { background-color: #162942 !important; }
+.bg-summary-2:hover { background-color: #193b4d !important; }
+.bg-summary-3:hover, .bg-action-3:hover { background-color: #216863 !important; }
+.bg-summary-4:hover, .bg-action-4:hover, .bg-action-5:hover { background-color: #216d68 !important; }
+/* --- End of new styles --- */
+
 .child-schedule-card {
     transition: all 0.3s ease;
     border-left: 4px solid #dee2e6;
@@ -313,15 +322,14 @@
     to { box-shadow: 0 0 20px rgba(25, 135, 84, 0.8); }
 }
 
-.card.bg-primary, .card.bg-success, .card.bg-info, .card.bg-warning {
+.card[class*="bg-summary-"] {
     transition: transform 0.2s;
 }
 
-.card.bg-primary:hover, .card.bg-success:hover, .card.bg-info:hover, .card.bg-warning:hover {
+.card[class*="bg-summary-"]:hover {
     transform: translateY(-2px);
 }
 
-/* ADDED: Quick Action Button Styling */
 .quick-action-btn {
     min-height: 120px;
     text-decoration: none !important;
@@ -348,7 +356,6 @@
     transform: scale(1.1);
 }
 
-/* Ensure equal spacing and full width usage */
 .row > .col {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
