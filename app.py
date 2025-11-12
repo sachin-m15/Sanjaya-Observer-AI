@@ -13,6 +13,7 @@ from routes.parent import parent_bp
 from routes.messages import messages_bp
 from routes.principal import principal_bp
 from routes.chatbot import chatbot_bp
+from routes.transcripts import transcripts_bp  # <-- 1. ADD THIS LINE
 import logging
 import sys
 from flask_mail import Mail, Message
@@ -333,6 +334,7 @@ def create_app():
     app.register_blueprint(messages_bp, url_prefix='/messages')
     app.register_blueprint(principal_bp, url_prefix='/principal')
     app.register_blueprint(chatbot_bp)
+    app.register_blueprint(transcripts_bp, url_prefix='/transcripts')  # <-- 2. ADD THIS LINE
 
     # FIX: Add favicon route to prevent 404 errors
     @app.route('/favicon.ico')

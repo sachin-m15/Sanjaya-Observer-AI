@@ -2002,3 +2002,4 @@ def view_principal_application(application_id):
         logger.error(f"Error viewing principal application: {e}")
         flash(f'Error loading application: {str(e)}', 'error')
         return redirect(url_for('admin.principal_applications'))
+    
