@@ -30,8 +30,7 @@ transcripts_bp = Blueprint('transcripts', __name__)
 @login_required
 def process_and_save_observation():
     """
-    This route takes raw text, generates all necessary reports,
-    and saves them to the new 'transcripts' table in Supabase.
+    This route takes raw text and generates all necessary reports.
     """
     
     # 1. Get data from the frontend JSON request
@@ -62,33 +61,13 @@ def process_and_save_observation():
         # --- Generate Daily Insights Report ---
         daily_report = extractor.generate_report_from_text(raw_text, user_info)
         
-        # 5. *** SAVE the reports to Supabase ***
-        #    This calls the 'save_transcript_to_db' method we added
         
-        # Save the conversational one
-        extractor.save_transcript_to_db(
-            child_id=child_id,
-            observer_id=observer_id,
-            transcript_type="conversational", # The label for this type
-            content=conversational_transcript,
-            session_date=user_info.get('session_date')
-        )
-        
-        # Save the daily report
-        extractor.save_transcript_to_db(
-            child_id=child_id,
-            observer_id=observer_id,
-            transcript_type="daily_insight_teen", # A different label
-            content=daily_report,
-            session_date=user_info.get('session_date'),
-            metadata={"model": "gemini-2.0-flash"} # Example of using metadata
-        )
         
         # 6. Return the main report to the frontend to display
         return jsonify({
-            "success": True, 
+            "success": True,
             "daily_report": daily_report, # Send back the main report
-            "message": "Reports generated and saved successfully."
+            "message": "Reports generated successfully."
         })
     
     except Exception as e:

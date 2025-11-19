@@ -578,47 +578,6 @@ Format it as a natural dialogue where:
         except Exception as e:
             return f"Error generating AI communication review: {str(e)}"
 
-    # =============================================
-    # === NEW METHOD ADDED HERE ===
-    # =============================================
-    def save_transcript_to_db(self, child_id, observer_id, transcript_type, content, session_date=None, metadata=None):
-        """
-        Saves a generated transcript or report to the Supabase 'transcripts' table.
-        """
-        try:
-            # Import the client function (following the existing pattern in this file)
-            from models.database import get_supabase_client
-            supabase = get_supabase_client()
-
-            # Use today's date if one isn't provided
-            if session_date is None:
-                # 'datetime' is imported at the top of the file
-                session_date = datetime.now().date().isoformat()
-
-            insert_data = {
-                "child_id": str(child_id),
-                "observer_id": str(observer_id),
-                "transcript_type": transcript_type,
-                "content": content,
-                "session_date": session_date,
-                "metadata": metadata if metadata else {}
-            }
-
-            response = supabase.table('transcripts').insert(insert_data).execute()
-
-            if response.data:
-                logger.info(f"Successfully saved transcript (type: {transcript_type}) for child {child_id}")
-                return response.data[0]  # Return the saved record
-            else:
-                logger.error(f"Supabase error saving transcript: {response}")
-                return None
-
-        except Exception as e:
-            logger.error(f"Error in save_transcript_to_db: {str(e)}")
-            return None
-    # =============================================
-    # === END OF NEW METHOD ===
-    # =============================================
 
     def create_word_document_with_emojis(self, report_content):
         """Create a Word document from the report content with emoji support"""
