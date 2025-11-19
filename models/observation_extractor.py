@@ -342,96 +342,153 @@ Format it as a natural dialogue where:
             student_name = child['name'] if child and child.get('name') else 'Student'
 
         prompt = f"""
-        You are an educational observer tasked with generating a comprehensive and accurate Daily Growth Report based on the following observational notes from a student session. Pay special attention to any achievements, learning moments, and areas for growth. The report should be structured, insightful, and easy to understand for parents. Add postives and negatives based on the text content provided. 
+        You are an educational observer tasked with generating a comprehensive Daily Insights Report based on the observational notes from a parent-teen conversation session. The report should analyze the teen's goal alignment, thoughts-words-actions consistency, and provide insights for parents to support their teen's development.
 
         CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         - NEVER extract or use any name from the audio transcription or text content
         - ALWAYS use the exact name provided: {student_name}
-        - Use these pronouns for the student throughout the report: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}
-        - When referring to the student, use "{student_name}" or the appropriate pronouns ({pronouns['subject']}/{pronouns['object']}/{pronouns['possessive']})
+        - Use these pronouns for the teen: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}
+        - When referring to the teen, use "{student_name}" or the appropriate pronouns ({pronouns['subject']}/{pronouns['object']}/{pronouns['possessive']})
         - Make sure the report is grammatically correct and adheres to proper English syntax and semantics.
-        Please carefully analyze the given text and complete the report using the exact format, emojis, section titles, and scoring rubrics as described below. The student should be referred to consistently using their provided name "{student_name}" and the appropriate pronouns - never use names from the audio/text content.
 
         📌 Important Instructions for the Report:
         - Follow the format exactly as shown below.
         - Make reasonable inferences for items not explicitly stated in the text.
-        - Ensure that the final Overall Growth Score and category (🟢/💚/⚠️/📈) accurately reflects the number of active areas, according to:
-        🟢 Excellent (7/7 areas) – Clear growth with strong evidence
-        💚 Good (5-6 areas) – Solid engagement with positive trends        
-        ⚠️ Fair (3-4 areas) – Some engagement, needs encouragement        
-        📈 Needs Work (1-2 areas) – Area not activated or underperforming today
-        - Include the new Communication Skills & Thought Clarity section.
-        - The tone should be professional, warm, and insightful — aimed at helping parents understand their child's daily growth.
+        - Analyze the teen's communication for goal alignment, self-awareness, and behavioral patterns.
+        - The tone should be professional, insightful, and supportive — aimed at helping parents understand their teen's development and provide guidance.
         - REMEMBER: Always use "{student_name}" instead of any pronouns or names from the content
 
-        Instructions for Report Generation
-        Assign scores based on clear, evidence-backed observations for each area.
-
-        Explain each score with a specific reason—avoid generalizations or repeated points. Every score must be justified individually and precisely.
-
-        Use the following rating scale consistently:
-
-        Ratings Scale:
-          Excellent (7/7 areas) – Clear growth with strong evidence
-          Good (5-6 areas) – Solid engagement with positive trends        
-          Fair (3-4 areas) – Some engagement, needs encouragement        
-          Needs Work (1-2 areas) – Area not activated or underperforming today
-        Always include the complete legend in every report so the evaluator or reader can cross-check scores against the criteria.
-
-        Ensure the entire report strictly follows the legend and that scoring aligns accurately with the defined scale.
-
-        Do not use tables for the "Growth Metrics & Observations" section. Present the content in a well-spaced, structured paragraph format to preserve formatting integrity across platforms.
         📝 TEXT CONTENT:
         {text_content}
 
-        🧾 Daily Growth Report Format for Parents
-
-        🧒 Child's Name: {student_name}
+        🎯 Daily Insights Report Format
+        📋 Report Structure for Parent Observation
         📅 Date: [{user_info.get('session_date', 'Today')}]
-        🌱 Curiosity Seed Explored: [Extract from text]
+        ⏰ Time: [{user_info.get('call_duration', 'Duration not specified')}]
+        👂 Listener: [{user_info.get('observer_name', 'Observer')}]
+        👦 Teen: [{student_name}]
 
-        📊 Growth Metrics & Observations
-        Growth Area | Rating | Observation Summary
-        🧠 Intellectual | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
-        😊 Emotional | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
-        🤝 Social | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
-        🎨 Creativity | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
-        🏃 Physical | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
-        🧭 Character/Values | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
-        🚀 Planning/Independence | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
+        💡 Today's Insights Section
+        💭 What the teen shared about their day:
+            • Key experiences or learnings mentioned
+            • Moments of achievement or challenge they highlighted
+            • Emotional tone and energy level during sharing
 
-        🌈 Curiosity Response Index: [1-10] / 10  
-        [Brief explanation of {student_name}'s engagement with the curiosity seed]
+        ❓ Questions asked by listener:
+            • Specific questions posed to encourage reflection
+            • Follow-up questions about goal alignment
+            • Any clarifying questions about daily activities
 
-        🗣️ Communication Skills
-        • Confidence level: [Describe based on speech and tone in text]  
-        • Clarity of thought: [Describe {student_name}'s ability to express thoughts clearly and independently]  
-        • Participation & engagement: [Describe based on frequency and quality of responses]  
-        • Sequence of explanation: [Describe structure and coherence of thought process]  
+        🎪 Thoughts-Words-Actions Alignment Analysis
+        💭 Thoughts (What they're thinking about):
+            • Goals and ambitions expressed
+            • Concerns or worries mentioned
+            • Future aspirations discussed
+            • Self-reflection demonstrated
 
-        🧠 Overall Growth Score:  
-        [🔵 Balanced Growth / 🟡 Moderate Growth / 🔴 Limited Growth] – [X/7] Areas Active  
-        [Brief recommendation for next steps or continued development for {student_name}]
+        💬 Words (How they communicate):
+            • Clarity of expression about their goals
+            • Consistency between stated intentions and described actions
+            • Language used when discussing challenges or setbacks
+            • Confidence level in verbal communication
 
-        📣 Note for Parent:  
-        [Comprehensive summary for parents with actionable insights and encouragement based on today's session for {student_name}]
+        ⚡ Actions (What they actually did):
+            • Specific activities completed during the day
+            • Steps taken toward stated goals
+            • Time allocation and priorities demonstrated
+            • Behaviors that support or contradict stated intentions
 
-        🟢 Legend
+        🎯 Goal Alignment Assessment
+        📊 Alignment Score: [High/Medium/Low]
+        ✅ Evidence of Alignment:
+            • Activities that directly support stated goals
+            • Decisions made that reflect long-term thinking
+            • Consistency between daily actions and bigger ambitions
+
+        ❌ Misalignment Observations:
+            • Activities that don't connect to stated goals
+            • Time spent on activities unrelated to ambitions
+            • Contradictions between words and actions
+
+        🔄 Questions Asked for Redirection:
+            • "Will this help toward your goal?" responses and reactions
+            • Teen's self-assessment of daily choices
+            • Recognition of alignment gaps
+
+        📅 Tomorrow's Plans Review
+        📝 Stated Plans:
+            • Specific activities planned for next day
+            • Goals or milestones teen wants to achieve
+            • Time commitments and priorities outlined
+
+        🔗 Goal Connection Analysis:
+            • How tomorrow's plans align with stated ambitions
+            • Evidence of strategic thinking about future actions
+            • Adjustments made based on today's reflection
+
+        <span style="color: green;">🎪 Behavioral Observations</span>
+        <span style="color: blue;">🎉 Engagement Level:</span>
+            • Enthusiasm when discussing goals vs. daily activities
+            • Openness to self-reflection questions
+            • Willingness to examine alignment gaps
+
+        <span style="color: blue;">🧠 Self-Awareness Indicators:</span>
+            • Ability to recognize disconnects independently
+            • Insight into personal patterns and habits
+            • Recognition of progress or setbacks
+
+        <span style="color: blue;">🔄 Response to Redirection:</span>
+            • Reaction when asked alignment questions
+            • Ability to self-correct without advice
+            • Demonstration of independent problem-solving
+
+        🎭 Communication Quality
+        👂 Listening Skills:
+            • Attention during conversation
+            • Understanding of questions asked
+            • Thoughtful responses vs. quick answers
+
+        🎤 Expression Clarity:
+            • Ability to articulate thoughts and feelings
+            • Consistency in communication throughout call
+            • Use of specific examples vs. vague statements
+
+        👨‍👩‍👧‍👦 Parent Recommendations (Observer Notes)
+        ⭐ Strengths Observed:
+            • Areas where teen shows strong alignment
+            • Evidence of growing self-awareness
+            • Positive behavioral patterns emerging
+
+        🎯 Areas for Continued Focus:
+            • Specific misalignment patterns to monitor
+            • Questions that prompt best self-reflection
+            • Topics that generate most engagement
+
+        💬 Suggested Parent Follow-up:
+            • Themes parents might explore in casual conversation
+            • Achievements worth acknowledging
+            • Areas where gentle accountability might help
+
+        📊 Call Summary
+        📈 Overall Assessment:
+            • Teen's current level of goal-directed thinking
+            • Progress in self-awareness and reflection skills
+            • Quality of thoughts-words-actions alignment
+
+        🔑 Key Insights for Parents:
+            • Most important observations from today's call
+            • Evidence of growth or areas needing attention
+            • Recommendations for continued support without interference
+
+        🏆 Legend
 
         ✅ Performance by Area
-        🟢 Excellent (7/7 areas) – Clear growth with strong evidence
-        💚 Good (5-6 areas) – Solid engagement with positive trends        
-        ⚠️ Fair (3-4 areas) – Some engagement, needs encouragement        
+        🏆 Excellent (7/7 areas) – Clear growth with strong evidence
+        🎉 Good (5-6 areas) – Solid engagement with positive trends
+        ⚠️ Fair (3-4 areas) – Some engagement, needs encouragement
         📈 Needs Work (1-2 areas) – Area not activated or underperforming today
 
-        give the entire report such that its a direct send worthy item, so all things should always be there and no other unecessary words in the response. No repetation.
-        Also make sure each and every report generated always has the legend "🟢 Legend
-
-        ✅ Performance by Area
-        🟢 Excellent (7/7 areas) – Clear growth with strong evidence
-        💚 Good (5-6 areas) – Solid engagement with positive trends        
-        ⚠️ Fair (3-4 areas) – Some engagement, needs encouragement        
-        📈 Needs Work (1-2 areas) – Area not activated or underperforming today" at the bottom of each report as the format of the report specifies. 
+        Generate the entire report in the exact format shown above, filling in each section with appropriate analysis based on the text content. Make reasonable inferences where information is not explicitly stated. Ensure the report is comprehensive and directly sendable.
         """
 
         try:
