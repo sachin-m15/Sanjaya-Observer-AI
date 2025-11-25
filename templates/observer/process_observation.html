@@ -575,7 +575,20 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function resetForm() {
+        // Reset the form
         document.getElementById('process-form').reset();
+
+        // Explicitly reset child selection to default
+        document.getElementById('child_id').selectedIndex = 0;
+
+        // Explicitly uncheck all processing mode radio buttons
+        const processingModes = document.querySelectorAll('input[name="processing_mode"]');
+        processingModes.forEach(radio => radio.checked = false);
+
+        // Ensure process button is disabled
+        document.getElementById('process-btn').disabled = true;
+
+        // Clear file preview and hide upload section
         document.getElementById('file-preview').innerHTML = '';
         document.getElementById('upload-section').style.display = 'none';
         document.getElementById('file-types').textContent = 'Select a processing mode first';

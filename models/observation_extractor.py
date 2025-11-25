@@ -207,13 +207,7 @@ IMPORTANT: Never use gender-specific language or names from the observation text
             transcript_id = transcript_response.json()["id"]
 
             status = "processing"
-            
-            # === BUG FIX ===
-            # Added a timeout to prevent an infinite loop
-            timeout = time.time() + 300  # 5-minute timeout
-            while status not in ["completed", "error"] and time.time() < timeout:
-            # === END BUG FIX ===
-            
+            while status != "completed" and status != "error":
                 polling_response = requests.get(
                     f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
                     headers=headers
@@ -277,7 +271,7 @@ Format it as a natural dialogue where:
             config = genai.types.GenerationConfig(temperature=0.2)
             response = model.generate_content([
                 {"role": "user", "parts": [{"text": prompt}]}
-            ], generation_config=config)
+            ],generation_config=config)
 
             if response and response.text:
                 return response.text.strip()
@@ -316,11 +310,11 @@ Format it as a natural dialogue where:
         """Generate a structured report from text using Google Gemini"""
         # Get child information with gender
         from models.database import get_child_by_id
-
+        
         # Ensure we have a valid child_id and student_name
         child_id = user_info.get('child_id')
         student_name = user_info.get('student_name', 'Student')
-
+        
         # If no child_id, try to get child by name
         if not child_id and student_name != 'Student':
             from models.database import get_supabase_client
@@ -333,162 +327,105 @@ Format it as a natural dialogue where:
                 child = None
         else:
             child = get_child_by_id(child_id) if child_id else None
-
+        
         # Get pronouns based on gender
         pronouns = self.get_pronouns(child['gender']) if child and child.get('gender') else {'subject': 'they', 'object': 'them', 'possessive': 'their'}
-
+        
         # Ensure we have a valid student name
         if not student_name or student_name == 'Student':
             student_name = child['name'] if child and child.get('name') else 'Student'
-
+        
         prompt = f"""
-        You are an educational observer tasked with generating a comprehensive Daily Insights Report based on the observational notes from a parent-teen conversation session. The report should analyze the teen's goal alignment, thoughts-words-actions consistency, and provide insights for parents to support their teen's development.
+        You are an educational observer tasked with generating a comprehensive and accurate Daily Growth Report based on the following observational notes from a student session. Pay special attention to any achievements, learning moments, and areas for growth. The report should be structured, insightful, and easy to understand for parents. Add postives and negatives based on the text content provided. 
 
         CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         - NEVER extract or use any name from the audio transcription or text content
         - ALWAYS use the exact name provided: {student_name}
-        - Use these pronouns for the teen: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}
-        - When referring to the teen, use "{student_name}" or the appropriate pronouns ({pronouns['subject']}/{pronouns['object']}/{pronouns['possessive']})
+        - Use these pronouns for the student throughout the report: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}
+        - When referring to the student, use "{student_name}" or the appropriate pronouns ({pronouns['subject']}/{pronouns['object']}/{pronouns['possessive']})
         - Make sure the report is grammatically correct and adheres to proper English syntax and semantics.
+        Please carefully analyze the given text and complete the report using the exact format, emojis, section titles, and scoring rubrics as described below. The student should be referred to consistently using their provided name "{student_name}" and the appropriate pronouns - never use names from the audio/text content.
 
         📌 Important Instructions for the Report:
         - Follow the format exactly as shown below.
         - Make reasonable inferences for items not explicitly stated in the text.
-        - Analyze the teen's communication for goal alignment, self-awareness, and behavioral patterns.
-        - The tone should be professional, insightful, and supportive — aimed at helping parents understand their teen's development and provide guidance.
-        - REMEMBER: Always use "{student_name}" instead of any pronouns or names from the content
+        - Ensure that the final Overall Growth Score and category (🟢/💚/⚠️/📈) accurately reflects the number of active areas, according to:
+        🟢 Excellent (7/7 areas) – Clear growth with strong evidence
+        💚 Good (5-6 areas) – Solid engagement with positive trends        
+        ⚠️ Fair (3-4 areas) – Some engagement, needs encouragement        
+        📈 Needs Work (1-2 areas) – Area not activated or underperforming today
+        - Include the new Communication Skills & Thought Clarity section.
+        - The tone should be professional, warm, and insightful — aimed at helping parents understand their child's daily growth.
+        - REMEMBER: Always use "{user_info['student_name']}" instead of any pronouns or names from the content
 
+        Instructions for Report Generation
+        Assign scores based on clear, evidence-backed observations for each area.
+
+        Explain each score with a specific reason—avoid generalizations or repeated points. Every score must be justified individually and precisely.
+
+        Use the following rating scale consistently:
+
+        Ratings Scale:
+         Excellent (7/7 areas) – Clear growth with strong evidence
+         Good (5-6 areas) – Solid engagement with positive trends        
+         Fair (3-4 areas) – Some engagement, needs encouragement        
+         Needs Work (1-2 areas) – Area not activated or underperforming today
+        Always include the complete legend in every report so the evaluator or reader can cross-check scores against the criteria.
+
+        Ensure the entire report strictly follows the legend and that scoring aligns accurately with the defined scale.
+
+        Do not use tables for the "Growth Metrics & Observations" section. Present the content in a well-spaced, structured paragraph format to preserve formatting integrity across platforms.
         📝 TEXT CONTENT:
         {text_content}
 
-        🎯 Daily Insights Report Format
-        📋 Report Structure for Parent Observation
+        🧾 Daily Growth Report Format for Parents
+
+        🧒 Child's Name: {student_name}
         📅 Date: [{user_info.get('session_date', 'Today')}]
-        ⏰ Time: [{user_info.get('call_duration', 'Duration not specified')}]
-        👂 Listener: [{user_info.get('observer_name', 'Observer')}]
-        👦 Teen: [{student_name}]
+        🌱 Curiosity Seed Explored: [Extract from text]
 
-        💡 Today's Insights Section
-        💭 What the teen shared about their day:
-            • Key experiences or learnings mentioned
-            • Moments of achievement or challenge they highlighted
-            • Emotional tone and energy level during sharing
+        📊 Growth Metrics & Observations
+        Growth Area | Rating | Observation Summary
+        🧠 Intellectual | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
+        😊 Emotional | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
+        🤝 Social | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
+        🎨 Creativity | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
+        🏃 Physical | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
+        🧭 Character/Values | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
+        🚀 Planning/Independence | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
 
-        ❓ Questions asked by listener:
-            • Specific questions posed to encourage reflection
-            • Follow-up questions about goal alignment
-            • Any clarifying questions about daily activities
+        🌈 Curiosity Response Index: [1-10] / 10  
+        [Brief explanation of {student_name}'s engagement with the curiosity seed]
 
-        🎪 Thoughts-Words-Actions Alignment Analysis
-        💭 Thoughts (What they're thinking about):
-            • Goals and ambitions expressed
-            • Concerns or worries mentioned
-            • Future aspirations discussed
-            • Self-reflection demonstrated
+        🗣️ Communication Skills
+        • Confidence level: [Describe based on speech and tone in text]  
+        • Clarity of thought: [Describe {student_name}'s ability to express thoughts clearly and independently]  
+        • Participation & engagement: [Describe based on frequency and quality of responses]  
+        • Sequence of explanation: [Describe structure and coherence of thought process]  
 
-        💬 Words (How they communicate):
-            • Clarity of expression about their goals
-            • Consistency between stated intentions and described actions
-            • Language used when discussing challenges or setbacks
-            • Confidence level in verbal communication
+        🧠 Overall Growth Score:  
+        [🔵 Balanced Growth / 🟡 Moderate Growth / 🔴 Limited Growth] – [X/7] Areas Active 
+        [Brief recommendation for next steps or continued development for {student_name}]
 
-        ⚡ Actions (What they actually did):
-            • Specific activities completed during the day
-            • Steps taken toward stated goals
-            • Time allocation and priorities demonstrated
-            • Behaviors that support or contradict stated intentions
+        📣 Note for Parent:  
+        [Comprehensive summary for parents with actionable insights and encouragement based on today's session for {student_name}]
 
-        🎯 Goal Alignment Assessment
-        📊 Alignment Score: [High/Medium/Low]
-        ✅ Evidence of Alignment:
-            • Activities that directly support stated goals
-            • Decisions made that reflect long-term thinking
-            • Consistency between daily actions and bigger ambitions
-
-        ❌ Misalignment Observations:
-            • Activities that don't connect to stated goals
-            • Time spent on activities unrelated to ambitions
-            • Contradictions between words and actions
-
-        🔄 Questions Asked for Redirection:
-            • "Will this help toward your goal?" responses and reactions
-            • Teen's self-assessment of daily choices
-            • Recognition of alignment gaps
-
-        📅 Tomorrow's Plans Review
-        📝 Stated Plans:
-            • Specific activities planned for next day
-            • Goals or milestones teen wants to achieve
-            • Time commitments and priorities outlined
-
-        🔗 Goal Connection Analysis:
-            • How tomorrow's plans align with stated ambitions
-            • Evidence of strategic thinking about future actions
-            • Adjustments made based on today's reflection
-
-        <span style="color: green;">🎪 Behavioral Observations</span>
-        <span style="color: blue;">🎉 Engagement Level:</span>
-            • Enthusiasm when discussing goals vs. daily activities
-            • Openness to self-reflection questions
-            • Willingness to examine alignment gaps
-
-        <span style="color: blue;">🧠 Self-Awareness Indicators:</span>
-            • Ability to recognize disconnects independently
-            • Insight into personal patterns and habits
-            • Recognition of progress or setbacks
-
-        <span style="color: blue;">🔄 Response to Redirection:</span>
-            • Reaction when asked alignment questions
-            • Ability to self-correct without advice
-            • Demonstration of independent problem-solving
-
-        🎭 Communication Quality
-        👂 Listening Skills:
-            • Attention during conversation
-            • Understanding of questions asked
-            • Thoughtful responses vs. quick answers
-
-        🎤 Expression Clarity:
-            • Ability to articulate thoughts and feelings
-            • Consistency in communication throughout call
-            • Use of specific examples vs. vague statements
-
-        👨‍👩‍👧‍👦 Parent Recommendations (Observer Notes)
-        ⭐ Strengths Observed:
-            • Areas where teen shows strong alignment
-            • Evidence of growing self-awareness
-            • Positive behavioral patterns emerging
-
-        🎯 Areas for Continued Focus:
-            • Specific misalignment patterns to monitor
-            • Questions that prompt best self-reflection
-            • Topics that generate most engagement
-
-        💬 Suggested Parent Follow-up:
-            • Themes parents might explore in casual conversation
-            • Achievements worth acknowledging
-            • Areas where gentle accountability might help
-
-        📊 Call Summary
-        📈 Overall Assessment:
-            • Teen's current level of goal-directed thinking
-            • Progress in self-awareness and reflection skills
-            • Quality of thoughts-words-actions alignment
-
-        🔑 Key Insights for Parents:
-            • Most important observations from today's call
-            • Evidence of growth or areas needing attention
-            • Recommendations for continued support without interference
-
-        🏆 Legend
+        🟢 Legend
 
         ✅ Performance by Area
-        🏆 Excellent (7/7 areas) – Clear growth with strong evidence
-        🎉 Good (5-6 areas) – Solid engagement with positive trends
-        ⚠️ Fair (3-4 areas) – Some engagement, needs encouragement
+        🟢 Excellent (7/7 areas) – Clear growth with strong evidence
+        💚 Good (5-6 areas) – Solid engagement with positive trends        
+        ⚠️ Fair (3-4 areas) – Some engagement, needs encouragement        
         📈 Needs Work (1-2 areas) – Area not activated or underperforming today
 
-        Generate the entire report in the exact format shown above, filling in each section with appropriate analysis based on the text content. Make reasonable inferences where information is not explicitly stated. Ensure the report is comprehensive and directly sendable.
+        give the entire report such that its a direct send worthy item, so all things should always be there and no other unecessary words in the response. No repetation.
+        Also make sure each and every report generated always has the legend "🟢 Legend
+
+        ✅ Performance by Area
+        🟢 Excellent (7/7 areas) – Clear growth with strong evidence
+        💚 Good (5-6 areas) – Solid engagement with positive trends        
+        ⚠️ Fair (3-4 areas) – Some engagement, needs encouragement        
+        📈 Needs Work (1-2 areas) – Area not activated or underperforming today" at the bottom of each report as the format of the report specifies. 
         """
 
         try:
@@ -496,7 +433,7 @@ Format it as a natural dialogue where:
             config = genai.types.GenerationConfig(temperature=0.2)
             response = model.generate_content([
                 {"role": "user", "parts": [{"text": prompt}]}
-            ], generation_config=config)
+            ],generation_config=config)
             return response.text
         except Exception as e:
             return f"Error generating report: {str(e)}"
@@ -507,7 +444,7 @@ Format it as a natural dialogue where:
         from models.database import get_child_by_id
         child = get_child_by_id(user_info.get('child_id'))
         pronouns = self.get_pronouns(child['gender']) if child and child.get('gender') else {'subject': 'they', 'object': 'them', 'possessive': 'their'}
-
+        
         prompt = f"""
         You are an AI assistant analyzing observer-student communication sessions for educational quality assessment. 
         Generate a comprehensive communication review in a professional report format based on the provided transcript.
@@ -577,7 +514,6 @@ Format it as a natural dialogue where:
             return response.text
         except Exception as e:
             return f"Error generating AI communication review: {str(e)}"
-
 
     def create_word_document_with_emojis(self, report_content):
         """Create a Word document from the report content with emoji support"""
@@ -894,19 +830,19 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
             try:
                 # Clean the response text to extract JSON
                 response_text = response.text.strip()
-
+                
                 # Remove markdown code blocks if present
                 if response_text.startswith('```json'):
                     response_text = response_text[7:]  # Remove ```json
                 if response_text.startswith('```'):
-                    response_text = response_text[3:]  # Remove ```
+                    response_text = response_text[3:]   # Remove ```
                 if response_text.endswith('```'):
                     response_text = response_text[:-3]  # Remove trailing ```
-
+                
                 # Find JSON object in the text
                 start_idx = response_text.find('{')
                 end_idx = response_text.rfind('}') + 1
-
+                
                 if start_idx != -1 and end_idx > start_idx:
                     json_text = response_text[start_idx:end_idx]
                     json_response = json.loads(json_text)
@@ -942,7 +878,7 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
                 # If JSON parsing fails, try to extract and format manually
                 logger.error(f"JSON parsing failed: {str(e)}")
                 logger.error(f"Response text: {response.text}")
-
+                
                 # Fallback: return a formatted version of the raw response
                 return f"""
 📋 Custom Report: Custom Analysis Report
@@ -1089,10 +1025,10 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
                 "totalObservations": {total_observations},
                 "activeGoals": {active_goals},
                 "completedGoals": {completed_goals},
-                "topStrengths": {json.dumps(dict(list(strength_counts.items())[:5]))},
-                "developmentFocus": {json.dumps(dict(list(development_counts.items())[:5]))}
+                "topStrengths": {dict(list(strength_counts.items())[:5])},
+                "developmentFocus": {dict(list(development_counts.items())[:5])}
               }},
-              "suggestedGraphs": {json.dumps(graph_suggestions)}
+              "suggestedGraphs": {graph_suggestions}
             }}
 
             For observations, provide a comprehensive monthly summary like:
@@ -1109,34 +1045,43 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
 
             # Try to parse as JSON and format nicely
             try:
-                # Clean up the response text
-                response_text = response.text.strip()
-                if response_text.startswith('```json'):
-                    response_text = response_text[7:]
-                if response_text.startswith('```'):
-                    response_text = response_text[3:]
-                if response_text.endswith('```'):
-                    response_text = response_text[:-3]
+                json_response = json.loads(response.text)
 
-                json_response = json.loads(response_text)
-                
-                # Also return the raw JSON for the DOCX/PDF generation
-                return json_response
+                # Format the JSON response into a readable report
+                formatted_report = f"""
+📋 Monthly Report: {json_response.get('className', 'Monthly Progress Summary')}
 
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to decode JSON from monthly report: {e}")
-                logger.error(f"Raw response was: {response.text}")
-                # If not valid JSON, return a basic error structure
-                return {
-                    "studentName": child_name,
-                    "date": f"{calendar.month_name[month]} {year}",
-                    "observations": "Error generating monthly summary. Could not parse AI response.",
-                    "strengths": [],
-                    "areasOfDevelopment": [],
-                    "recommendations": [],
-                    "monthlyMetrics": {},
-                    "suggestedGraphs": []
-                }
+🧒 Student Name: {json_response.get('studentName', child_name)}
+📅 Period: {json_response.get('date', f'{calendar.month_name[month]} {year}')}
+
+📊 Monthly Metrics:
+• Total Observations: {json_response.get('monthlyMetrics', {}).get('totalObservations', total_observations)}
+• Active Goals: {json_response.get('monthlyMetrics', {}).get('activeGoals', active_goals)}
+• Completed Goals: {json_response.get('monthlyMetrics', {}).get('completedGoals', completed_goals)}
+
+📝 Monthly Observations Summary:
+{json_response.get('observations', 'No observations summary available')}
+
+⭐ Strengths Observed:
+{chr(10).join([f"• {strength}" for strength in json_response.get('strengths', [])])}
+
+📈 Areas for Development:
+{chr(10).join([f"• {area}" for area in json_response.get('areasOfDevelopment', [])])}
+
+💡 Recommendations for Next Month:
+{chr(10).join([f"• {rec}" for rec in json_response.get('recommendations', [])])}
+
+📊 Suggested Visual Analytics:
+{chr(10).join([f"• {graph['title']}: {graph['description']}" for graph in json_response.get('suggestedGraphs', [])])}
+
+📋 Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                """
+
+                return formatted_report.strip()
+
+            except json.JSONDecodeError:
+                # If not valid JSON, return the raw response
+                return response.text
 
         except Exception as e:
             return f"Error generating monthly summary: {str(e)}"
@@ -1186,6 +1131,19 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
             doc.add_paragraph(r, style='List Bullet')
         doc.add_paragraph("")
 
+        # ---  Analytics ---
+        doc.add_heading("Learning Analytics", level=1)
+        analytics = summary_json.get('learningAnalytics', {})
+        for k, v in analytics.items():
+            doc.add_paragraph(f"{k.replace('_', ' ').title()}: {v}")
+        doc.add_paragraph("")
+
+        # --- Progress Insights ---
+        doc.add_heading("Progress Insights", level=1)
+        for insight in summary_json.get('progressInsights', []):
+            doc.add_paragraph(insight, style='List Bullet')
+        doc.add_paragraph("")
+
         # --- Graphs Section ---
         doc.add_heading("Visual Analytics", level=1)
 
@@ -1195,27 +1153,18 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         for obs in observations:
             date = obs.get('date')
             try:
-                # Check 'full_data' and 'processed_data' for the report text
+                full_data = json.loads(obs.get('full_data', '{}'))
+                report = full_data.get('formatted_report', '')
+            except Exception:
                 report = ''
-                if obs.get('full_data'):
-                    full_data = json.loads(obs.get('full_data', '{}'))
-                    report = full_data.get('formatted_report', '')
-                elif obs.get('processed_data'):
-                     report = obs.get('processed_data', '')
-                
-                curiosity_match = re.search(r'🌈 Curiosity Response Index: (\d{1,2}) ?/ ?10', report)
-                if curiosity_match:
-                    curiosity_score = int(curiosity_match.group(1))
-                    curiosity_by_date[date] = curiosity_score
-                
-                growth_match = re.search(r'Overall Growth Score.*?(\d)\s*/\s*7', report)
-                if growth_match:
-                    growth_score = int(growth_match.group(1))
-                    growth_by_date[date] = growth_score
-            except Exception as e:
-                logger.warning(f"Could not parse report data for graphs: {e}")
-                continue
-                
+            curiosity_match = re.search(r'🌈 Curiosity Response Index: (\\d{1,2}) ?/ ?10', report)
+            if curiosity_match:
+                curiosity_score = int(curiosity_match.group(1))
+                curiosity_by_date[date] = curiosity_score
+            growth_match = re.search(r'Overall Growth Score.*?(\\d)\\s*/\\s*7', report)
+            if growth_match:
+                growth_score = int(growth_match.group(1))
+                growth_by_date[date] = growth_score
         # Sort by date
         curiosity_dates = sorted(curiosity_by_date.keys())
         growth_dates = sorted(growth_by_date.keys())
@@ -1224,35 +1173,53 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
 
         # --- Curiosity Line Chart ---
         if curiosity_dates:
-            try:
-                fig, ax = plt.subplots()
-                ax.plot(curiosity_dates, curiosity_scores, marker='o', color='blue')
-                ax.set_title('Curiosity Response Index by Day')
-                ax.set_xlabel('Date')
-                ax.set_ylabel('Curiosity Score')
-                ax.yaxis.set_major_locator(MaxNLocator(integer=True)) # Ensure y-axis has integers
-                plt.xticks(rotation=45, ha='right')
-                plt.tight_layout()
-                img_stream = BytesIO()
-                plt.savefig(img_stream, format='png')
-                plt.close(fig)
-                img_stream.seek(0)
-                doc.add_picture(img_stream, width=Inches(5.5))
-                doc.add_paragraph("")
-            except Exception as e:
-                logger.error(f"Failed to generate curiosity chart: {e}")
-                doc.add_paragraph("[Error generating Curiosity chart]")
-
+            fig, ax = plt.subplots()
+            ax.plot(curiosity_dates, curiosity_scores, marker='o', color='blue')
+            ax.set_title('Curiosity Response Index by Day')
+            ax.set_xlabel('Date')
+            ax.set_ylabel('Curiosity Score')
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            plt.xticks(rotation=45, ha='right')
+            plt.tight_layout()
+            img_stream = BytesIO()
+            plt.savefig(img_stream, format='png')
+            plt.close(fig)
+            img_stream.seek(0)
+            doc.add_picture(img_stream, width=Inches(5.5))
+            doc.add_paragraph("")
 
         # --- Growth Line Chart ---
         if growth_dates:
-            try:
+            fig, ax = plt.subplots()
+            ax.plot(growth_dates, growth_scores, marker='o', color='green')
+            ax.set_title('Overall Growth Score by Day')
+            ax.set_xlabel('Date')
+            ax.set_ylabel('Growth Score')
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            plt.xticks(rotation=45, ha='right')
+            plt.tight_layout()
+            img_stream = BytesIO()
+            plt.savefig(img_stream, format='png')
+            plt.close(fig)
+            img_stream.seek(0)
+            doc.add_picture(img_stream, width=Inches(5.5))
+            doc.add_paragraph("")
+
+        # --- Other suggested graphs from summary_json ---
+        for graph in summary_json.get('suggestedGraphs', []):
+            if graph['type'] in ['line_chart', 'bar_chart']:
                 fig, ax = plt.subplots()
-                ax.plot(growth_dates, growth_scores, marker='o', color='green')
-                ax.set_title('Overall Growth Score by Day')
-                ax.set_xlabel('Date')
-                ax.set_ylabel('Growth Score (out of 7)')
-                ax.yaxis.set_major_locator(MaxNLocator(integer=True)) # Ensure y-axis has integers
+                if graph['type'] == 'line_chart':
+                    x = list(graph['data'].keys())
+                    y = list(graph['data'].values())
+                    ax.plot(x, y, marker='o')
+                elif graph['type'] == 'bar_chart':
+                    x = list(graph['data'].keys())
+                    y = list(graph['data'].values())
+                    ax.bar(x, y)
+                ax.set_title(graph.get('title', ''))
+                ax.set_xlabel(graph.get('xAxis', ''))
+                ax.set_ylabel(graph.get('yAxis', ''))
                 plt.xticks(rotation=45, ha='right')
                 plt.tight_layout()
                 img_stream = BytesIO()
@@ -1260,64 +1227,8 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
                 plt.close(fig)
                 img_stream.seek(0)
                 doc.add_picture(img_stream, width=Inches(5.5))
+                doc.add_paragraph(graph.get('description', ''))
                 doc.add_paragraph("")
-            except Exception as e:
-                logger.error(f"Failed to generate growth chart: {e}")
-                doc.add_paragraph("[Error generating Growth chart]")
-
-
-        # --- Other suggested graphs from summary_json ---
-        for graph in summary_json.get('suggestedGraphs', []):
-            try:
-                if graph['type'] in ['pie_chart', 'donut_chart'] and graph.get('data'):
-                    labels = list(graph['data'].keys())
-                    sizes = list(graph['data'].values())
-                    
-                    fig, ax = plt.subplots()
-                    ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-                    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-                    
-                    if graph['type'] == 'donut_chart':
-                        # Draw a circle at the center of pie to make it a donut
-                        centre_circle = plt.Circle((0,0),0.70,fc='white')
-                        fig.gca().add_artist(centre_circle)
-                        
-                    ax.set_title(graph.get('title', ''))
-                    plt.tight_layout()
-                    img_stream = BytesIO()
-                    plt.savefig(img_stream, format='png')
-                    plt.close(fig)
-                    img_stream.seek(0)
-                    doc.add_picture(img_stream, width=Inches(4.5))
-                    doc.add_paragraph(graph.get('description', ''))
-                    doc.add_paragraph("")
-
-                elif graph['type'] in ['bar_chart', 'horizontal_bar'] and graph.get('data'):
-                    labels = list(graph['data'].keys())
-                    values = list(graph['data'].values())
-                    
-                    fig, ax = plt.subplots()
-                    if graph['type'] == 'bar_chart':
-                        ax.bar(labels, values)
-                        plt.xticks(rotation=45, ha='right')
-                    else: # horizontal_bar
-                        ax.barh(labels, values)
-                    
-                    ax.set_title(graph.get('title', ''))
-                    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-                    plt.tight_layout()
-                    img_stream = BytesIO()
-                    plt.savefig(img_stream, format='png')
-                    plt.close(fig)
-                    img_stream.seek(0)
-                    doc.add_picture(img_stream, width=Inches(5.5))
-                    doc.add_paragraph(graph.get('description', ''))
-                    doc.add_paragraph("")
-
-            except Exception as e:
-                logger.error(f"Failed to generate suggested graph '{graph.get('title')}': {e}")
-                doc.add_paragraph(f"[Error generating chart: {graph.get('title')}]")
-
 
         docx_bytes = BytesIO()
         doc.save(docx_bytes)
@@ -1329,50 +1240,43 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         """
         Generate a PDF version of the monthly report by converting the Word doc.
         """
-        try:
-            from docx2pdf import convert
-        except ImportError:
-            logger.error("docx2pdf library not found. Please run 'pip install docx2pdf'")
-            raise Exception("PDF conversion failed: docx2pdf library not found.")
-            
+        from docx2pdf import convert
         import tempfile
         import os
         from io import BytesIO
-
+        
         try:
             # Generate the Word document first
             docx_bytes = self.generate_monthly_docx_report(
                 observations, goal_progress, strength_counts, development_counts, summary_json
             )
-
+            
             # Create temporary files for conversion
             with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_docx:
                 tmp_docx.write(docx_bytes.read())
                 tmp_docx_path = tmp_docx.name
-
+            
             tmp_pdf_path = tmp_docx_path.replace('.docx', '.pdf')
-
+            
             # Convert docx to pdf
             convert(tmp_docx_path, tmp_pdf_path)
-
+            
             # Read the PDF file
             with open(tmp_pdf_path, 'rb') as f:
                 pdf_bytes = f.read()
-
+            
             # Clean up temporary files
             try:
                 os.remove(tmp_docx_path)
                 os.remove(tmp_pdf_path)
             except OSError:
                 pass  # Ignore cleanup errors
-
+            
             return BytesIO(pdf_bytes)
-
+            
         except Exception as e:
             # If PDF conversion fails, raise the error with more context
-            logger.error(f"PDF conversion failed: {str(e)}")
-            raise Exception(f"PDF conversion failed: {str(e)}. This might be due to missing docx2pdf dependencies or system limitations (e.g., LibreOffice or MS Word not found).")
-
+            raise Exception(f"PDF conversion failed: {str(e)}. This might be due to missing docx2pdf dependencies or system limitations.")
 
     def preprocess_audio_for_student(self, file, student_id):
         """Preprocess audio for students with known issues"""
@@ -1511,7 +1415,7 @@ Please provide suggestions in this exact format:
         from models.database import get_child_by_id
         child = get_child_by_id(child_id) if child_id else None
         pronouns = self.get_pronouns(child['gender']) if child and child.get('gender') else {'subject': 'they', 'object': 'them', 'possessive': 'their'}
-
+        
         return f"""🎯 **SUGGESTED TOPICS FOR TODAY'S SESSION**
 
 1. **Creative Storytelling** - Have {child_name} create and narrate a story using everyday objects
