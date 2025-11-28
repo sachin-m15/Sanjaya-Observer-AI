@@ -36,6 +36,9 @@ from .observation_extractor import ObservationExtractor
 from . import monthly_report_generator
 from .monthly_report_generator import MonthlyReportGenerator
 
+from . import transcript_manager
+from .transcript_manager import TranscriptManager
+
 __all__ = [
     # Database module and functions
     'database',
@@ -61,5 +64,7 @@ __all__ = [
     'observation_extractor',
     'ObservationExtractor',
     'monthly_report_generator',
-    'MonthlyReportGenerator'
+    'MonthlyReportGenerator',
+    'transcript_manager',
+    'TranscriptManager'
 ]

@@ -14,6 +14,7 @@ from models.database import (
 )
 from models.observation_extractor import ObservationExtractor
 from models.monthly_report_generator import MonthlyReportGenerator
+from models.transcript_manager import TranscriptManager
 from utils.decorators import observer_required
 import json
 from datetime import datetime, timedelta
@@ -475,6 +476,15 @@ def process_file():
                     'success': False,
                     'error': f'Failed to generate report: {str(report_error)}'
                 })
+
+            # Save transcript to Excel file
+            try:
+                transcript_manager = TranscriptManager()
+                transcript_manager.save_transcript(session_date, student_name, transcript)
+                logger.info(f"Transcript saved to Excel for student {student_name}")
+            except Exception as excel_error:
+                logger.warning(f"Failed to save transcript to Excel: {excel_error}")
+                # Continue with observation saving even if Excel save fails
 
             # Save observation only if everything succeeded
             observation_id = str(uuid.uuid4())

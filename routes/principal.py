@@ -9,6 +9,7 @@ from models.database import (
     create_principal_feedback, get_peer_reviews_for_organization, auto_assign_parent_to_organization
 )
 from models.observation_extractor import ObservationExtractor
+from models.transcript_manager import TranscriptManager
 from utils.decorators import principal_required
 import pandas as pd
 import uuid
@@ -1477,3 +1478,32 @@ def email_ai_review():
     except Exception as e:
         logger.exception(f"Error emailing AI review: {e}")
         return jsonify({'success': False, 'error': str(e)})
+
+
+@principal_bp.route('/download_transcripts')
+@principal_required
+def download_transcripts():
+    """Download transcripts as Excel file for principal's organization from Supabase"""
+    try:
+        principal_org_id = session.get('organization_id')
+        if not principal_org_id:
+            flash('Organization information not found', 'error')
+            return redirect(url_for('principal.dashboard'))
+
+        transcript_manager = TranscriptManager()
+        # Principal gets only transcripts from their organization
+        excel_bytes = transcript_manager.get_transcripts_excel_bytes(org_id=principal_org_id)
+
+        filename = f"organization_transcripts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+        return send_file(
+            excel_bytes,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+    except Exception as e:
+        logger.error(f"Error downloading transcripts: {str(e)}")
+        flash(f'Error downloading transcripts: {str(e)}', 'error')
+        return redirect(url_for('principal.dashboard'))

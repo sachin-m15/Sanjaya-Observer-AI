@@ -9,6 +9,7 @@ from models.database import (
     get_observer_child_mappings_by_organization
 )
 from models.observation_extractor import ObservationExtractor
+from models.transcript_manager import TranscriptManager
 from utils.decorators import admin_required
 import pandas as pd
 import uuid
@@ -1958,6 +1959,30 @@ def observer_report_counts():
         return render_template('admin/observer_report_counts.html', data=data)
     except Exception as e:
         return render_template('admin/observer_report_counts.html', data=[], error=str(e))
+
+
+@admin_bp.route('/download_transcripts')
+@admin_required
+def download_transcripts():
+    """Download all transcripts as Excel file from Supabase"""
+    try:
+        transcript_manager = TranscriptManager()
+        # Admin gets all transcripts (no org_id filter)
+        excel_bytes = transcript_manager.get_transcripts_excel_bytes()
+
+        filename = f"all_transcripts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+        return send_file(
+            excel_bytes,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+    except Exception as e:
+        logger.error(f"Error downloading transcripts: {str(e)}")
+        flash(f'Error downloading transcripts: {str(e)}', 'error')
+        return redirect(url_for('admin.dashboard'))
 
 
 @admin_bp.route('/view_principal_application/<application_id>')
