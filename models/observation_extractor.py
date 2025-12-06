@@ -26,24 +26,24 @@ class ObservationExtractor:
 
     def get_pronouns(self, gender):
         """Get appropriate pronouns based on gender"""
-        if gender == 'male':
-            return {'subject': 'he', 'object': 'him', 'possessive': 'his'}
-        elif gender == 'female':
-            return {'subject': 'she', 'object': 'her', 'possessive': 'her'}
+        if gender == "male":
+            return {"subject": "he", "object": "him", "possessive": "his"}
+        elif gender == "female":
+            return {"subject": "she", "object": "her", "possessive": "her"}
         else:
-            return {'subject': 'they', 'object': 'them', 'possessive': 'their'}
+            return {"subject": "they", "object": "them", "possessive": "their"}
 
     def image_to_base64(self, image_file):
         """Convert image file to base64 string"""
-        return base64.b64encode(image_file.read()).decode('utf-8')
+        return base64.b64encode(image_file.read()).decode("utf-8")
 
     def extract_text_with_ocr(self, image_file):
         """Extract text from image using OCR.space API"""
         try:
             # Get file extension
-            file_type = image_file.filename.split('.')[-1].lower()
-            if file_type == 'jpeg':
-                file_type = 'jpg'
+            file_type = image_file.filename.split(".")[-1].lower()
+            if file_type == "jpeg":
+                file_type = "jpg"
 
             # Convert image to base64
             image_file.seek(0)  # Reset file pointer
@@ -52,37 +52,37 @@ class ObservationExtractor:
 
             # Prepare request payload
             payload = {
-                'apikey': self.ocr_api_key,
-                'language': 'eng',
-                'isOverlayRequired': False,
-                'iscreatesearchablepdf': False,
-                'issearchablepdfhidetextlayer': False,
-                'OCREngine': 2,
-                'detectOrientation': True,
-                'scale': True,
-                'base64Image': base64_image_with_prefix
+                "apikey": self.ocr_api_key,
+                "language": "eng",
+                "isOverlayRequired": False,
+                "iscreatesearchablepdf": False,
+                "issearchablepdfhidetextlayer": False,
+                "OCREngine": 2,
+                "detectOrientation": True,
+                "scale": True,
+                "base64Image": base64_image_with_prefix,
             }
 
             # Send request to OCR API
             response = requests.post(
-                'https://api.ocr.space/parse/image',
+                "https://api.ocr.space/parse/image",
                 data=payload,
-                headers={'apikey': self.ocr_api_key}
+                headers={"apikey": self.ocr_api_key},
             )
 
             response.raise_for_status()
             data = response.json()
 
             # Process response
-            if not data.get('ParsedResults') or len(data['ParsedResults']) == 0:
-                error_msg = data.get('ErrorMessage', 'No parsed results returned')
+            if not data.get("ParsedResults") or len(data["ParsedResults"]) == 0:
+                error_msg = data.get("ErrorMessage", "No parsed results returned")
                 raise Exception(f"OCR Error: {error_msg}")
 
-            parsed_result = data['ParsedResults'][0]
-            if parsed_result.get('ErrorMessage'):
+            parsed_result = data["ParsedResults"][0]
+            if parsed_result.get("ErrorMessage"):
                 raise Exception(f"OCR Error: {parsed_result['ErrorMessage']}")
 
-            extracted_text = parsed_result['ParsedText']
+            extracted_text = parsed_result["ParsedText"]
 
             if not extracted_text or not extracted_text.strip():
                 raise Exception("No text was detected in the image")
@@ -133,46 +133,43 @@ IMPORTANT: Never use gender-specific language or names from the observation text
 
             # Send request to Groq API
             response = requests.post(
-                'https://api.groq.com/openai/v1/chat/completions',
+                "https://api.groq.com/openai/v1/chat/completions",
                 headers={
-                    'Authorization': f'Bearer {self.groq_api_key}',
-                    'Content-Type': 'application/json'
+                    "Authorization": f"Bearer {self.groq_api_key}",
+                    "Content-Type": "application/json",
                 },
                 json={
                     "model": "llama-3.3-70b-versatile",
                     "messages": [
-                        {
-                            "role": "system",
-                            "content": system_prompt
-                        },
+                        {"role": "system", "content": system_prompt},
                         {
                             "role": "user",
-                            "content": f"Extract and structure the following text from an observation sheet: {extracted_text}"
-                        }
+                            "content": f"Extract and structure the following text from an observation sheet: {extracted_text}",
+                        },
                     ],
                     "temperature": 0.2,
-                    "response_format": {"type": "json_object"}
-                }
+                    "response_format": {"type": "json_object"},
+                },
             )
 
             response.raise_for_status()
             data = response.json()
 
             # Extract the JSON content
-            ai_response = data['choices'][0]['message']['content']
+            ai_response = data["choices"][0]["message"]["content"]
             return json.loads(ai_response)
 
         except Exception as e:
             raise Exception(f"Groq API Error: {str(e)}")
 
-    def transcribe_with_assemblyai(self, audio_file, language_code='en'):
+    def transcribe_with_assemblyai(self, audio_file, language_code="en"):
         """Transcribe audio using AssemblyAI API with English, Hindi, Marathi, or Punjabi."""
         if not Config.ASSEMBLYAI_API_KEY:
             return "Error: AssemblyAI API key is not configured."
 
         headers = {
             "authorization": Config.ASSEMBLYAI_API_KEY,
-            "content-type": "application/json"
+            "content-type": "application/json",
         }
 
         try:
@@ -181,7 +178,7 @@ IMPORTANT: Never use gender-specific language or names from the observation text
             upload_response = requests.post(
                 "https://api.assemblyai.com/v2/upload",
                 headers={"authorization": Config.ASSEMBLYAI_API_KEY},
-                data=audio_file.read()
+                data=audio_file.read(),
             )
 
             if upload_response.status_code != 200:
@@ -192,13 +189,13 @@ IMPORTANT: Never use gender-specific language or names from the observation text
             # Prepare transcription request
             transcript_request = {
                 "audio_url": upload_url,
-                "language_code": language_code  # 'en', 'hi', 'mr', or 'pa'
+                "language_code": language_code,  # 'en', 'hi', 'mr', or 'pa'
             }
 
             transcript_response = requests.post(
                 "https://api.assemblyai.com/v2/transcript",
                 json=transcript_request,
-                headers=headers
+                headers=headers,
             )
 
             if transcript_response.status_code != 200:
@@ -210,11 +207,13 @@ IMPORTANT: Never use gender-specific language or names from the observation text
             while status != "completed" and status != "error":
                 polling_response = requests.get(
                     f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
-                    headers=headers
+                    headers=headers,
                 )
 
                 if polling_response.status_code != 200:
-                    return f"Error checking transcription status: {polling_response.text}"
+                    return (
+                        f"Error checking transcription status: {polling_response.text}"
+                    )
 
                 polling_data = polling_response.json()
                 status = polling_data["status"]
@@ -267,11 +266,12 @@ Format it as a natural dialogue where:
             """
 
             # Use the same Gemini API pattern as your existing methods
-            model = genai.GenerativeModel('gemini-2.0-flash')
+            model = genai.GenerativeModel("gemini-2.0-flash")
             config = genai.types.GenerationConfig(temperature=0.2)
-            response = model.generate_content([
-                {"role": "user", "parts": [{"text": prompt}]}
-            ],generation_config=config)
+            response = model.generate_content(
+                [{"role": "user", "parts": [{"text": prompt}]}],
+                generation_config=config,
+            )
 
             if response and response.text:
                 return response.text.strip()
@@ -284,7 +284,7 @@ Format it as a natural dialogue where:
 
     def _basic_transcript_formatting(self, raw_text):
         """Basic fallback transcript formatting"""
-        lines = raw_text.split('\n')
+        lines = raw_text.split("\n")
         formatted_lines = []
 
         for i, line in enumerate(lines):
@@ -299,50 +299,63 @@ Format it as a natural dialogue where:
             # If no lines, create a basic conversation
             formatted_lines = [
                 "Observer: Can you tell me about what you learned today?",
-                f"Child: {raw_text[:100]}..." if len(raw_text) > 100 else f"Child: {raw_text}",
+                f"Child: {raw_text[:100]}..."
+                if len(raw_text) > 100
+                else f"Child: {raw_text}",
                 "Observer: That's wonderful! Can you tell me more about it?",
-                "Child: Yes, I enjoyed learning about this topic."
+                "Child: Yes, I enjoyed learning about this topic.",
             ]
 
-        return '\n'.join(formatted_lines)
+        return "\n".join(formatted_lines)
 
     def generate_report_from_text(self, text_content, user_info):
         """Generate a structured report from text using Google Gemini"""
         # Get child information with gender
         from models.database import get_child_by_id
-        
+
         # Ensure we have a valid child_id and student_name
-        child_id = user_info.get('child_id')
-        student_name = user_info.get('student_name', 'Student')
-        
+        child_id = user_info.get("child_id")
+        student_name = user_info.get("student_name", "Student")
+
         # If no child_id, try to get child by name
-        if not child_id and student_name != 'Student':
+        if not child_id and student_name != "Student":
             from models.database import get_supabase_client
+
             supabase = get_supabase_client()
-            child_data = supabase.table('children').select('id, name, gender').eq('name', student_name).execute().data
+            child_data = (
+                supabase.table("children")
+                .select("id, name, gender")
+                .eq("name", student_name)
+                .execute()
+                .data
+            )
             if child_data:
-                child_id = child_data[0]['id']
+                child_id = child_data[0]["id"]
                 child = child_data[0]
             else:
                 child = None
         else:
             child = get_child_by_id(child_id) if child_id else None
-        
+
         # Get pronouns based on gender
-        pronouns = self.get_pronouns(child['gender']) if child and child.get('gender') else {'subject': 'they', 'object': 'them', 'possessive': 'their'}
-        
+        pronouns = (
+            self.get_pronouns(child["gender"])
+            if child and child.get("gender")
+            else {"subject": "they", "object": "them", "possessive": "their"}
+        )
+
         # Ensure we have a valid student name
-        if not student_name or student_name == 'Student':
-            student_name = child['name'] if child and child.get('name') else 'Student'
-        
+        if not student_name or student_name == "Student":
+            student_name = child["name"] if child and child.get("name") else "Student"
+
         prompt = f"""
-        You are an educational observer tasked with generating a comprehensive and accurate Daily Growth Report based on the following observational notes from a student session. Pay special attention to any achievements, learning moments, and areas for growth. The report should be structured, insightful, and easy to understand for parents. Add postives and negatives based on the text content provided. 
+        You are an educational observer tasked with generating a comprehensive and accurate Daily Insights based on the following observational notes from a student session. Pay special attention to any achievements, learning moments, and areas for growth. The report should be structured, insightful, and easy to understand for parents. Add postives and negatives based on the text content provided.
 
         CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         - NEVER extract or use any name from the audio transcription or text content
         - ALWAYS use the exact name provided: {student_name}
-        - Use these pronouns for the student throughout the report: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}
-        - When referring to the student, use "{student_name}" or the appropriate pronouns ({pronouns['subject']}/{pronouns['object']}/{pronouns['possessive']})
+        - Use these pronouns for the student throughout the report: subject = {pronouns["subject"]}, object = {pronouns["object"]}, possessive = {pronouns["possessive"]}
+        - When referring to the student, use "{student_name}" or the appropriate pronouns ({pronouns["subject"]}/{pronouns["object"]}/{pronouns["possessive"]})
         - Make sure the report is grammatically correct and adheres to proper English syntax and semantics.
         Please carefully analyze the given text and complete the report using the exact format, emojis, section titles, and scoring rubrics as described below. The student should be referred to consistently using their provided name "{student_name}" and the appropriate pronouns - never use names from the audio/text content.
 
@@ -351,12 +364,12 @@ Format it as a natural dialogue where:
         - Make reasonable inferences for items not explicitly stated in the text.
         - Ensure that the final Overall Growth Score and category (🟢/💚/⚠️/📈) accurately reflects the number of active areas, according to:
         🟢 Excellent (7/7 areas) – Clear growth with strong evidence
-        💚 Good (5-6 areas) – Solid engagement with positive trends        
-        ⚠️ Fair (3-4 areas) – Some engagement, needs encouragement        
+        💚 Good (5-6 areas) – Solid engagement with positive trends
+        ⚠️ Fair (3-4 areas) – Some engagement, needs encouragement
         📈 Needs Work (1-2 areas) – Area not activated or underperforming today
         - Include the new Communication Skills & Thought Clarity section.
         - The tone should be professional, warm, and insightful — aimed at helping parents understand their child's daily growth.
-        - REMEMBER: Always use "{user_info['student_name']}" instead of any pronouns or names from the content
+        - REMEMBER: Always use "{user_info["student_name"]}" instead of any pronouns or names from the content
 
         Instructions for Report Generation
         Assign scores based on clear, evidence-backed observations for each area.
@@ -367,8 +380,8 @@ Format it as a natural dialogue where:
 
         Ratings Scale:
          Excellent (7/7 areas) – Clear growth with strong evidence
-         Good (5-6 areas) – Solid engagement with positive trends        
-         Fair (3-4 areas) – Some engagement, needs encouragement        
+         Good (5-6 areas) – Solid engagement with positive trends
+         Fair (3-4 areas) – Some engagement, needs encouragement
          Needs Work (1-2 areas) – Area not activated or underperforming today
         Always include the complete legend in every report so the evaluator or reader can cross-check scores against the criteria.
 
@@ -378,10 +391,10 @@ Format it as a natural dialogue where:
         📝 TEXT CONTENT:
         {text_content}
 
-        🧾 Daily Growth Report Format for Parents
+        🧾 Daily Insights Format for Parents
 
         🧒 Child's Name: {student_name}
-        📅 Date: [{user_info.get('session_date', 'Today')}]
+        📅 Date: [{user_info.get("session_date", "Today")}]
         🌱 Curiosity Seed Explored: [Extract from text]
 
         📊 Growth Metrics & Observations
@@ -391,17 +404,11 @@ Format it as a natural dialogue where:
         🤝 Social | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
         🎨 Creativity | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
         🏃 Physical | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
-        🧭 Character/Values | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
         🚀 Planning/Independence | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
-
+        🧭 Character | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
+        
         🌈 Curiosity Response Index: [1-10] / 10  
-        [Brief explanation of {student_name}'s engagement with the curiosity seed]
-
-        🗣️ Communication Skills
-        • Confidence level: [Describe based on speech and tone in text]  
-        • Clarity of thought: [Describe {student_name}'s ability to express thoughts clearly and independently]  
-        • Participation & engagement: [Describe based on frequency and quality of responses]  
-        • Sequence of explanation: [Describe structure and coherence of thought process]  
+        [Brief explanation of {student_name}'s engagement with the curiosity seed]ation: [Describe structure and coherence of thought process]  
 
         🧠 Overall Growth Score:  
         [🔵 Balanced Growth / 🟡 Moderate Growth / 🔴 Limited Growth] – [X/7] Areas Active 
@@ -429,11 +436,12 @@ Format it as a natural dialogue where:
         """
 
         try:
-            model = genai.GenerativeModel('gemini-2.0-flash')
+            model = genai.GenerativeModel("gemini-2.0-flash")
             config = genai.types.GenerationConfig(temperature=0.2)
-            response = model.generate_content([
-                {"role": "user", "parts": [{"text": prompt}]}
-            ],generation_config=config)
+            response = model.generate_content(
+                [{"role": "user", "parts": [{"text": prompt}]}],
+                generation_config=config,
+            )
             return response.text
         except Exception as e:
             return f"Error generating report: {str(e)}"
@@ -442,23 +450,28 @@ Format it as a natural dialogue where:
         """Generate AI communication review for peer review system"""
         # Get child information with gender
         from models.database import get_child_by_id
-        child = get_child_by_id(user_info.get('child_id'))
-        pronouns = self.get_pronouns(child['gender']) if child and child.get('gender') else {'subject': 'they', 'object': 'them', 'possessive': 'their'}
-        
+
+        child = get_child_by_id(user_info.get("child_id"))
+        pronouns = (
+            self.get_pronouns(child["gender"])
+            if child and child.get("gender")
+            else {"subject": "they", "object": "them", "possessive": "their"}
+        )
+
         prompt = f"""
         You are an AI assistant analyzing observer-student communication sessions for educational quality assessment. 
         Generate a comprehensive communication review in a professional report format based on the provided transcript.
 
-        STUDENT: {user_info['student_name']}
-        OBSERVER: {user_info['observer_name']}
+        STUDENT: {user_info["student_name"]}
+        OBSERVER: {user_info["observer_name"]}
         TRANSCRIPT: {transcript}
         
-        Use these pronouns for the student throughout the review: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}
+        Use these pronouns for the student throughout the review: subject = {pronouns["subject"]}, object = {pronouns["object"]}, possessive = {pronouns["possessive"]}
 
         Generate a detailed AI communication review in the following professional format:
 
         Analysis of Observer's Communication Style
-        This report analyzes the conversation transcripts to evaluate the observer's adherence to non-judgmental and non-teaching communication techniques with {user_info['student_name']}.
+        This report analyzes the conversation transcripts to evaluate the observer's adherence to non-judgmental and non-teaching communication techniques with {user_info["student_name"]}.
 
         1. Instances of Direct Advice, Judgment, or Teaching
         [Analyze specific examples where the observer provided direct advice, made judgments, or acted as a teacher rather than a listener]
@@ -498,7 +511,7 @@ Format it as a natural dialogue where:
         Observer Improvement Areas
         [Summarize the main areas where the observer needs to improve]
 
-        Impact on the Student ({user_info['student_name']})
+        Impact on the Student ({user_info["student_name"]})
         [Analyze how the observer's communication style affects the student]
 
         Recommendation: [Provide specific, actionable recommendations for improvement]
@@ -507,10 +520,10 @@ Format it as a natural dialogue where:
         """
 
         try:
-            model = genai.GenerativeModel('gemini-2.0-flash')
-            response = model.generate_content([
-                {"role": "user", "parts": [{"text": prompt}]}
-            ])
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            response = model.generate_content(
+                [{"role": "user", "parts": [{"text": prompt}]}]
+            )
             return response.text
         except Exception as e:
             return f"Error generating AI communication review: {str(e)}"
@@ -520,58 +533,58 @@ Format it as a natural dialogue where:
         doc = docx.Document()
 
         # Set document encoding and font for emoji support
-        style = doc.styles['Normal']
+        style = doc.styles["Normal"]
         font = style.font
-        font.name = 'Segoe UI Emoji'
+        font.name = "Segoe UI Emoji"
 
-        title = doc.add_heading('📋 Daily Growth Report', 0)
-        title.runs[0].font.name = 'Segoe UI Emoji'
+        title = doc.add_heading("📋 Daily Insights", 0)
+        title.runs[0].font.name = "Segoe UI Emoji"
 
         # Process the report content line by line
-        lines = report_content.split('\n')
+        lines = report_content.split("\n")
         for line in lines:
             line = line.strip()
             if not line:
                 continue
 
             # Clean up markdown formatting but preserve emojis
-            line = line.replace('**', '')
+            line = line.replace("**", "")
 
-            if line.startswith(('🧒', '📅', '🌱')):
+            if line.startswith(("🧒", "📅", "🌱")):
                 p = doc.add_paragraph()
                 run = p.add_run(line)
                 run.bold = True
-                run.font.name = 'Segoe UI Emoji'
+                run.font.name = "Segoe UI Emoji"
                 run.font.size = docx.shared.Pt(12)
-            elif line.startswith('📊'):
+            elif line.startswith("📊"):
                 heading = doc.add_heading(line, level=1)
-                heading.runs[0].font.name = 'Segoe UI Emoji'
-            elif line.startswith(('🧠', '😊', '🤝', '🎨', '🏃', '🧭', '🚀')):
+                heading.runs[0].font.name = "Segoe UI Emoji"
+            elif line.startswith(("🧠", "😊", "🤝", "🎨", "🏃", "🧭", "🚀")):
                 p = doc.add_paragraph()
                 run = p.add_run(line)
                 run.bold = True
-                run.font.name = 'Segoe UI Emoji'
+                run.font.name = "Segoe UI Emoji"
                 run.font.size = docx.shared.Pt(11)
-            elif line.startswith(('🌈', '🗣️')):
+            elif line.startswith(("🌈", "🗣️")):
                 heading = doc.add_heading(line, level=2)
-                heading.runs[0].font.name = 'Segoe UI Emoji'
-            elif line.startswith('🧠 Overall'):
+                heading.runs[0].font.name = "Segoe UI Emoji"
+            elif line.startswith("🧠 Overall"):
                 heading = doc.add_heading(line, level=2)
-                heading.runs[0].font.name = 'Segoe UI Emoji'
-            elif line.startswith('📣'):
+                heading.runs[0].font.name = "Segoe UI Emoji"
+            elif line.startswith("📣"):
                 heading = doc.add_heading(line, level=2)
-                heading.runs[0].font.name = 'Segoe UI Emoji'
-            elif line.startswith('🟢 Legend'):
+                heading.runs[0].font.name = "Segoe UI Emoji"
+            elif line.startswith("🟢 Legend"):
                 heading = doc.add_heading(line, level=3)
-                heading.runs[0].font.name = 'Segoe UI Emoji'
-            elif line.startswith(('✅', '⚠️', '📈', '🔵', '🟢', '🟡', '🔴', '•', '💚')):
-                p = doc.add_paragraph(line, style='List Bullet')
-                p.runs[0].font.name = 'Segoe UI Emoji'
+                heading.runs[0].font.name = "Segoe UI Emoji"
+            elif line.startswith(("✅", "⚠️", "📈", "🔵", "🟢", "🟡", "🔴", "•", "💚")):
+                p = doc.add_paragraph(line, style="List Bullet")
+                p.runs[0].font.name = "Segoe UI Emoji"
                 p.runs[0].font.size = docx.shared.Pt(10)
             else:
                 p = doc.add_paragraph()
                 run = p.add_run(line)
-                run.font.name = 'Segoe UI Emoji'
+                run.font.name = "Segoe UI Emoji"
                 run.font.size = docx.shared.Pt(10)
 
         # Save to BytesIO object
@@ -591,29 +604,29 @@ Format it as a natural dialogue where:
 
         # Create emoji mapping for text replacement
         emoji_map = {
-            '🧒': '[Child]',
-            '📅': '[Date]',
-            '🌱': '[Curiosity Seed]',
-            '📊': '[Growth Metrics]',
-            '🧠': '[Intellectual]',
-            '😊': '[Emotional]',
-            '🤝': '[Social]',
-            '🎨': '[Creativity]',
-            '🏃': '[Physical]',
-            '🧭': '[Character/Values]',
-            '🚀': '[Planning/Independence]',
-            '🌈': '[Curiosity Response]',
-            '🗣️': '[Communication Skills]',
-            '📣': '[Note for Parent]',
-            '🟢': '[Excellent]',
-            '✅': '[Good]',
-            '⚠️': '[Fair]',
-            '📈': '[Needs Work]',
-            '🔵': '[Balanced Growth]',
-            '🟡': '[Moderate Growth]',
-            '🔴': '[Limited Growth]',
-            '💚': '[Good Score]',
-            '📋': '[Report]'
+            "🧒": "[Child]",
+            "📅": "[Date]",
+            "🌱": "[Curiosity Seed]",
+            "📊": "[Growth Metrics]",
+            "🧠": "[Intellectual]",
+            "😊": "[Emotional]",
+            "🤝": "[Social]",
+            "🎨": "[Creative]",
+            "🏃": "[Physical]",
+            "🧭": "[Character/Values]",
+            "🚀": "[Planning/Independence]",
+            "🌈": "[Curiosity Response]",
+            "🗣️": "[Communication Skills]",
+            "📣": "[Note for Parent]",
+            "🟢": "[Excellent]",
+            "✅": "[Good]",
+            "⚠️": "[Fair]",
+            "📈": "[Needs Work]",
+            "🔵": "[Balanced Growth]",
+            "🟡": "[Moderate Growth]",
+            "🔴": "[Limited Growth]",
+            "💚": "[Good Score]",
+            "📋": "[Report]",
         }
 
         # Replace emojis with readable text
@@ -628,70 +641,85 @@ Format it as a natural dialogue where:
             rightMargin=72,
             leftMargin=72,
             topMargin=72,
-            bottomMargin=18
+            bottomMargin=18,
         )
 
         styles = getSampleStyleSheet()
 
         # Create custom styles
         title_style = ParagraphStyle(
-            'CustomTitle',
-            parent=styles['Heading1'],
+            "CustomTitle",
+            parent=styles["Heading1"],
             fontSize=16,
             spaceAfter=20,
             textColor=blue,
-            alignment=1  # Center alignment
+            alignment=1,  # Center alignment
         )
 
         heading_style = ParagraphStyle(
-            'CustomHeading',
-            parent=styles['Heading2'],
+            "CustomHeading",
+            parent=styles["Heading2"],
             fontSize=12,
             spaceAfter=10,
             textColor=black,
-            fontName='Helvetica-Bold'
+            fontName="Helvetica-Bold",
         )
 
         normal_style = ParagraphStyle(
-            'CustomNormal',
-            parent=styles['Normal'],
+            "CustomNormal",
+            parent=styles["Normal"],
             fontSize=10,
             spaceAfter=4,
-            fontName='Helvetica'
+            fontName="Helvetica",
         )
 
         story = []
 
         # Add title
-        title = Paragraph("[Report] Daily Growth Report", title_style)
+        title = Paragraph("[Report] Daily Insights", title_style)
         story.append(title)
         story.append(Spacer(1, 12))
 
         # Process report content
-        lines = pdf_content.split('\n')
+        lines = pdf_content.split("\n")
         for line in lines:
             line = line.strip()
             if not line:
                 continue
 
             try:
-                if line.startswith(('[Child]', '[Date]', '[Curiosity Seed]')):
+                if line.startswith(("[Child]", "[Date]", "[Curiosity Seed]")):
                     para = Paragraph(f"<b>{line}</b>", heading_style)
                     story.append(para)
-                elif line.startswith('[Growth Metrics]'):
+                elif line.startswith("[Growth Metrics]"):
                     para = Paragraph(f"<b>{line}</b>", heading_style)
                     story.append(para)
-                elif line.startswith(('[Intellectual]', '[Emotional]', '[Social]', '[Creativity]', '[Physical]',
-                                      '[Character/Values]', '[Planning/Independence]')):
+                elif line.startswith(
+                    (
+                        "[Intellectual]",
+                        "[Emotional]",
+                        "[Social]",
+                        "[Creativity]",
+                        "[Physical]",
+                        "[Character/Values]",
+                        "[Planning/Independence]",
+                    )
+                ):
                     para = Paragraph(f"<b>{line}</b>", normal_style)
                     story.append(para)
-                elif line.startswith(('[Curiosity Response]', '[Communication Skills]', '[Note for Parent]')):
+                elif line.startswith(
+                    (
+                        "[Curiosity Response]",
+                        "[Communication Skills]",
+                        "[Note for Parent]",
+                    )
+                ):
                     para = Paragraph(f"<b>{line}</b>", heading_style)
                     story.append(para)
-                elif 'Overall Growth Score' in line:
+                elif "Overall Growth Score" in line:
                     para = Paragraph(f"<b>{line}</b>", heading_style)
                     story.append(para)
-                elif line.startswith('[Excellent] Legend'):
+                elif line.startswith("[Excellent] Legend"):
                     para = Paragraph(f"<b>{line}</b>", heading_style)
                     story.append(para)
                 else:
@@ -772,18 +800,32 @@ Format it as a natural dialogue where:
         try:
             supabase = get_supabase_client()
             # Get all processed observations for the child
-            processed_data = supabase.table('processed_observations').select("*").eq('child_id', child_id).execute()
-            observations = supabase.table('observations').select("*").eq('student_id', child_id).execute()
+            processed_data = (
+                supabase.table("processed_observations")
+                .select("*")
+                .eq("child_id", child_id)
+                .execute()
+            )
+            observations = (
+                supabase.table("observations")
+                .select("*")
+                .eq("student_id", child_id)
+                .execute()
+            )
 
             # Get child information with gender
             child = get_child_by_id(child_id)
-            child_name = child['name'] if child else 'Student'
-            pronouns = self.get_pronouns(child['gender']) if child and child.get('gender') else {'subject': 'they', 'object': 'them', 'possessive': 'their'}
+            child_name = child["name"] if child else "Student"
+            pronouns = (
+                self.get_pronouns(child["gender"])
+                if child and child.get("gender")
+                else {"subject": "they", "object": "them", "possessive": "their"}
+            )
 
             # Combine all data
             all_data = {
-                'processed_observations': processed_data.data,
-                'observations': observations.data
+                "processed_observations": processed_data.data,
+                "observations": observations.data,
             }
 
             custom_prompt = f"""
@@ -792,8 +834,8 @@ Format it as a natural dialogue where:
 CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
 - ALWAYS use the exact name from the database: {child_name}
 - NEVER use any names that appear in the observation data or audio transcriptions
-- Use these pronouns for the student throughout the report: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}
-- When describing activities, use "{child_name}" or the appropriate pronouns ({pronouns['subject']}/{pronouns['object']}/{pronouns['possessive']})
+- Use these pronouns for the student throughout the report: subject = {pronouns["subject"]}, object = {pronouns["object"]}, possessive = {pronouns["possessive"]}
+- When describing activities, use "{child_name}" or the appropriate pronouns ({pronouns["subject"]}/{pronouns["object"]}/{pronouns["possessive"]})
 
             Based on the following prompt and all available data for this child, generate a comprehensive custom report in the specified JSON format:
 
@@ -806,7 +848,7 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
               "studentName": "{child_name}",
               "studentId": "Custom Report ID",
               "className": "Custom Analysis Report",
-              "date": "{datetime.now().strftime('%Y-%m-%d')}",
+              "date": "{datetime.now().strftime("%Y-%m-%d")}",
               "observations": "Detailed description combining all relevant observations that match the user's prompt - refer to '{child_name}' or 'the student'",
               "strengths": ["List of strengths observed in {child_name} based on available data"],
               "areasOfDevelopment": ["List of areas where {child_name} needs improvement"],
@@ -821,28 +863,28 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
             REMEMBER: Always use "{child_name}" from the database, never names from observation data, and avoid gender assumptions.
             """
 
-            model = genai.GenerativeModel('gemini-2.0-flash')
-            response = model.generate_content([
-                {"role": "user", "parts": [{"text": custom_prompt}]}
-            ])
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            response = model.generate_content(
+                [{"role": "user", "parts": [{"text": custom_prompt}]}]
+            )
 
             # Try to parse as JSON and format nicely
             try:
                 # Clean the response text to extract JSON
                 response_text = response.text.strip()
-                
+
                 # Remove markdown code blocks if present
-                if response_text.startswith('```json'):
+                if response_text.startswith("```json"):
                     response_text = response_text[7:]  # Remove ```json
-                if response_text.startswith('```'):
-                    response_text = response_text[3:]   # Remove ```
-                if response_text.endswith('```'):
+                if response_text.startswith("```"):
+                    response_text = response_text[3:]  # Remove ```
+                if response_text.endswith("```"):
                     response_text = response_text[:-3]  # Remove trailing ```
-                
+
                 # Find JSON object in the text
-                start_idx = response_text.find('{')
-                end_idx = response_text.rfind('}') + 1
-                
+                start_idx = response_text.find("{")
+                end_idx = response_text.rfind("}") + 1
+
                 if start_idx != -1 and end_idx > start_idx:
                     json_text = response_text[start_idx:end_idx]
                     json_response = json.loads(json_text)
@@ -851,25 +893,25 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
 
                 # Format the JSON response into a readable report
                 formatted_report = f"""
-📋 Custom Report: {json_response.get('className', 'Custom Analysis Report')}
+📋 Custom Report: {json_response.get("className", "Custom Analysis Report")}
 
-🧒 Student Name: {json_response.get('studentName', child_name)}
-📅 Date: {json_response.get('date', datetime.now().strftime('%Y-%m-%d'))}
+🧒 Student Name: {json_response.get("studentName", child_name)}
+📅 Date: {json_response.get("date", datetime.now().strftime("%Y-%m-%d"))}
 📝 Report Type: Custom Analysis
 
 📊 Observations Summary:
-{json_response.get('observations', 'No observations available')}
+{json_response.get("observations", "No observations available")}
 
 ⭐ Strengths Identified:
-{chr(10).join([f"• {strength}" for strength in json_response.get('strengths', [])])}
+{chr(10).join([f"• {strength}" for strength in json_response.get("strengths", [])])}
 
 📈 Areas for Development:
-{chr(10).join([f"• {area}" for area in json_response.get('areasOfDevelopment', [])])}
+{chr(10).join([f"• {area}" for area in json_response.get("areasOfDevelopment", [])])}
 
 💡 Recommendations:
-{chr(10).join([f"• {rec}" for rec in json_response.get('recommendations', [])])}
+{chr(10).join([f"• {rec}" for rec in json_response.get("recommendations", [])])}
 
-📋 Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+📋 Report Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                 """
 
                 return formatted_report.strip()
@@ -878,33 +920,40 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
                 # If JSON parsing fails, try to extract and format manually
                 logger.error(f"JSON parsing failed: {str(e)}")
                 logger.error(f"Response text: {response.text}")
-                
+
                 # Fallback: return a formatted version of the raw response
                 return f"""
 📋 Custom Report: Custom Analysis Report
 
 🧒 Student Name: {child_name}
-📅 Date: {datetime.now().strftime('%Y-%m-%d')}
+📅 Date: {datetime.now().strftime("%Y-%m-%d")}
 📝 Report Type: Custom Analysis
 
 📊 Analysis Results:
 {response.text}
 
-📋 Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+📋 Report Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                 """.strip()
 
         except Exception as e:
             return f"Error generating custom report: {str(e)}"
 
-    def generate_monthly_report_json_format(self, observations, goal_progress, child_name, year, month, child_id=None):
+    def generate_monthly_report_json_format(
+        self, observations, goal_progress, child_name, year, month, child_id=None
+    ):
         """Generate monthly summary in the new JSON format with graph recommendations"""
         try:
             import calendar
 
             # Get child information with gender
             from models.database import get_child_by_id
+
             child = get_child_by_id(child_id) if child_id else None
-            pronouns = self.get_pronouns(child['gender']) if child and child.get('gender') else {'subject': 'they', 'object': 'them', 'possessive': 'their'}
+            pronouns = (
+                self.get_pronouns(child["gender"])
+                if child and child.get("gender")
+                else {"subject": "they", "object": "them", "possessive": "their"}
+            )
 
             # Prepare data for analysis
             observation_texts = []
@@ -913,38 +962,50 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
             all_recommendations = []
 
             for obs in observations:
-                observation_texts.append(obs.get('observations', ''))
+                observation_texts.append(obs.get("observations", ""))
 
                 # Parse strengths, developments, and recommendations
-                if obs.get('strengths'):
+                if obs.get("strengths"):
                     try:
-                        strengths = json.loads(obs['strengths']) if isinstance(obs['strengths'], str) else obs[
-                            'strengths']
+                        strengths = (
+                            json.loads(obs["strengths"])
+                            if isinstance(obs["strengths"], str)
+                            else obs["strengths"]
+                        )
                         all_strengths.extend(strengths)
                     except:
                         pass
 
-                if obs.get('areas_of_development'):
+                if obs.get("areas_of_development"):
                     try:
-                        developments = json.loads(obs['areas_of_development']) if isinstance(
-                            obs['areas_of_development'], str) else obs['areas_of_development']
+                        developments = (
+                            json.loads(obs["areas_of_development"])
+                            if isinstance(obs["areas_of_development"], str)
+                            else obs["areas_of_development"]
+                        )
                         all_developments.extend(developments)
                     except:
                         pass
 
-                if obs.get('recommendations'):
+                if obs.get("recommendations"):
                     try:
-                        recommendations = json.loads(obs['recommendations']) if isinstance(obs['recommendations'],
-                                                                                           str) else obs[
-                            'recommendations']
+                        recommendations = (
+                            json.loads(obs["recommendations"])
+                            if isinstance(obs["recommendations"], str)
+                            else obs["recommendations"]
+                        )
                         all_recommendations.extend(recommendations)
                     except:
                         pass
 
             # Calculate metrics for graphs
             total_observations = len(observations)
-            active_goals = len([g for g in goal_progress if g.get('status') == 'active'])
-            completed_goals = len([g for g in goal_progress if g.get('status') == 'achieved'])
+            active_goals = len(
+                [g for g in goal_progress if g.get("status") == "active"]
+            )
+            completed_goals = len(
+                [g for g in goal_progress if g.get("status") == "achieved"]
+            )
 
             # Count frequency of strengths and development areas
             strength_counts = {}
@@ -959,35 +1020,43 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
             graph_suggestions = []
 
             if total_observations > 0:
-                graph_suggestions.append({
-                    "type": "bar_chart",
-                    "title": "Observation Frequency by Week",
-                    "description": f"Shows {total_observations} observations recorded throughout the month"
-                })
+                graph_suggestions.append(
+                    {
+                        "type": "bar_chart",
+                        "title": "Observation Frequency by Week",
+                        "description": f"Shows {total_observations} observations recorded throughout the month",
+                    }
+                )
 
             if strength_counts:
-                graph_suggestions.append({
-                    "type": "pie_chart",
-                    "title": "Top Strengths Distribution",
-                    "data": strength_counts,
-                    "description": f"Distribution of {len(strength_counts)} different strength areas"
-                })
+                graph_suggestions.append(
+                    {
+                        "type": "pie_chart",
+                        "title": "Top Strengths Distribution",
+                        "data": strength_counts,
+                        "description": f"Distribution of {len(strength_counts)} different strength areas",
+                    }
+                )
 
             if development_counts:
-                graph_suggestions.append({
-                    "type": "horizontal_bar",
-                    "title": "Development Areas Focus",
-                    "data": development_counts,
-                    "description": f"Areas requiring attention with frequency counts"
-                })
+                graph_suggestions.append(
+                    {
+                        "type": "horizontal_bar",
+                        "title": "Development Areas Focus",
+                        "data": development_counts,
+                        "description": f"Areas requiring attention with frequency counts",
+                    }
+                )
 
             if goal_progress:
-                graph_suggestions.append({
-                    "type": "donut_chart",
-                    "title": "Goal Progress Status",
-                    "data": {"Active": active_goals, "Completed": completed_goals},
-                    "description": f"Goal completion status: {completed_goals} completed, {active_goals} active"
-                })
+                graph_suggestions.append(
+                    {
+                        "type": "donut_chart",
+                        "title": "Goal Progress Status",
+                        "data": {"Active": active_goals, "Completed": completed_goals},
+                        "description": f"Goal completion status: {completed_goals} completed, {active_goals} active",
+                    }
+                )
 
             # Create comprehensive prompt for JSON generation
             monthly_prompt = f"""
@@ -996,8 +1065,8 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
 CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
 - ALWAYS use the exact name from the database: {child_name}
 - NEVER use any names that appear in the observation data or audio transcriptions
-- Use these pronouns for the student throughout the report: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}
-- When describing activities and progress, use "{child_name}" or the appropriate pronouns ({pronouns['subject']}/{pronouns['object']}/{pronouns['possessive']})
+- Use these pronouns for the student throughout the report: subject = {pronouns["subject"]}, object = {pronouns["object"]}, possessive = {pronouns["possessive"]}
+- When describing activities and progress, use "{child_name}" or the appropriate pronouns ({pronouns["subject"]}/{pronouns["object"]}/{pronouns["possessive"]})
 
             MONTH: {calendar.month_name[month]} {year}
             STUDENT: {child_name}
@@ -1038,10 +1107,10 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
             """
 
             # Generate the report using AI
-            model = genai.GenerativeModel('gemini-2.0-flash')
-            response = model.generate_content([
-                {"role": "user", "parts": [{"text": monthly_prompt}]}
-            ])
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            response = model.generate_content(
+                [{"role": "user", "parts": [{"text": monthly_prompt}]}]
+            )
 
             # Try to parse as JSON and format nicely
             try:
@@ -1049,32 +1118,32 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
 
                 # Format the JSON response into a readable report
                 formatted_report = f"""
-📋 Monthly Report: {json_response.get('className', 'Monthly Progress Summary')}
+📋 Monthly Report: {json_response.get("className", "Monthly Progress Summary")}
 
-🧒 Student Name: {json_response.get('studentName', child_name)}
-📅 Period: {json_response.get('date', f'{calendar.month_name[month]} {year}')}
+🧒 Student Name: {json_response.get("studentName", child_name)}
+📅 Period: {json_response.get("date", f"{calendar.month_name[month]} {year}")}
 
 📊 Monthly Metrics:
-• Total Observations: {json_response.get('monthlyMetrics', {}).get('totalObservations', total_observations)}
-• Active Goals: {json_response.get('monthlyMetrics', {}).get('activeGoals', active_goals)}
-• Completed Goals: {json_response.get('monthlyMetrics', {}).get('completedGoals', completed_goals)}
+• Total Observations: {json_response.get("monthlyMetrics", {}).get("totalObservations", total_observations)}
+• Active Goals: {json_response.get("monthlyMetrics", {}).get("activeGoals", active_goals)}
+• Completed Goals: {json_response.get("monthlyMetrics", {}).get("completedGoals", completed_goals)}
 
 📝 Monthly Observations Summary:
-{json_response.get('observations', 'No observations summary available')}
+{json_response.get("observations", "No observations summary available")}
 
 ⭐ Strengths Observed:
-{chr(10).join([f"• {strength}" for strength in json_response.get('strengths', [])])}
+{chr(10).join([f"• {strength}" for strength in json_response.get("strengths", [])])}
 
 📈 Areas for Development:
-{chr(10).join([f"• {area}" for area in json_response.get('areasOfDevelopment', [])])}
+{chr(10).join([f"• {area}" for area in json_response.get("areasOfDevelopment", [])])}
 
 💡 Recommendations for Next Month:
-{chr(10).join([f"• {rec}" for rec in json_response.get('recommendations', [])])}
+{chr(10).join([f"• {rec}" for rec in json_response.get("recommendations", [])])}
 
 📊 Suggested Visual Analytics:
-{chr(10).join([f"• {graph['title']}: {graph['description']}" for graph in json_response.get('suggestedGraphs', [])])}
+{chr(10).join([f"• {graph['title']}: {graph['description']}" for graph in json_response.get("suggestedGraphs", [])])}
 
-📋 Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+📋 Report Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                 """
 
                 return formatted_report.strip()
@@ -1086,8 +1155,14 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         except Exception as e:
             return f"Error generating monthly summary: {str(e)}"
 
-    def generate_monthly_docx_report(self, observations, goal_progress, strength_counts, development_counts,
-                                     summary_json):
+    def generate_monthly_docx_report(
+        self,
+        observations,
+        goal_progress,
+        strength_counts,
+        development_counts,
+        summary_json,
+    ):
         """
         Generate a narrative-rich monthly report as a Word document, with embedded charts.
         """
@@ -1100,9 +1175,9 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         import json
 
         doc = docx.Document()
-        style = doc.styles['Normal']
+        style = doc.styles["Normal"]
         font = style.font
-        font.name = 'Segoe UI'
+        font.name = "Segoe UI"
         font.size = Pt(11)
 
         # --- Narrative Section ---
@@ -1110,38 +1185,38 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         doc.add_paragraph(f"{summary_json.get('date', '')}")
         doc.add_paragraph(f"Student: {summary_json.get('studentName', '')}")
         doc.add_paragraph("")
-        doc.add_paragraph(summary_json.get('observations', ''))
+        doc.add_paragraph(summary_json.get("observations", ""))
         doc.add_paragraph("")
 
         # --- Strengths ---
         doc.add_heading("Strengths Observed", level=1)
-        for s in summary_json.get('strengths', []):
-            doc.add_paragraph(s, style='List Bullet')
+        for s in summary_json.get("strengths", []):
+            doc.add_paragraph(s, style="List Bullet")
         doc.add_paragraph("")
 
         # --- Areas for Development ---
         doc.add_heading("Areas for Development", level=1)
-        for a in summary_json.get('areasOfDevelopment', []):
-            doc.add_paragraph(a, style='List Bullet')
+        for a in summary_json.get("areasOfDevelopment", []):
+            doc.add_paragraph(a, style="List Bullet")
         doc.add_paragraph("")
 
         # --- Recommendations ---
         doc.add_heading("Recommendations for Next Month", level=1)
-        for r in summary_json.get('recommendations', []):
-            doc.add_paragraph(r, style='List Bullet')
+        for r in summary_json.get("recommendations", []):
+            doc.add_paragraph(r, style="List Bullet")
         doc.add_paragraph("")
 
         # ---  Analytics ---
         doc.add_heading("Learning Analytics", level=1)
-        analytics = summary_json.get('learningAnalytics', {})
+        analytics = summary_json.get("learningAnalytics", {})
         for k, v in analytics.items():
             doc.add_paragraph(f"{k.replace('_', ' ').title()}: {v}")
         doc.add_paragraph("")
 
         # --- Progress Insights ---
         doc.add_heading("Progress Insights", level=1)
-        for insight in summary_json.get('progressInsights', []):
-            doc.add_paragraph(insight, style='List Bullet')
+        for insight in summary_json.get("progressInsights", []):
+            doc.add_paragraph(insight, style="List Bullet")
         doc.add_paragraph("")
 
         # --- Graphs Section ---
@@ -1151,17 +1226,19 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         curiosity_by_date = {}
         growth_by_date = {}
         for obs in observations:
-            date = obs.get('date')
+            date = obs.get("date")
             try:
-                full_data = json.loads(obs.get('full_data', '{}'))
-                report = full_data.get('formatted_report', '')
+                full_data = json.loads(obs.get("full_data", "{}"))
+                report = full_data.get("formatted_report", "")
             except Exception:
-                report = ''
-            curiosity_match = re.search(r'🌈 Curiosity Response Index: (\\d{1,2}) ?/ ?10', report)
+                report = ""
+            curiosity_match = re.search(
+                r"🌈 Curiosity Response Index: (\\d{1,2}) ?/ ?10", report
+            )
             if curiosity_match:
                 curiosity_score = int(curiosity_match.group(1))
                 curiosity_by_date[date] = curiosity_score
-            growth_match = re.search(r'Overall Growth Score.*?(\\d)\\s*/\\s*7', report)
+            growth_match = re.search(r"Overall Growth Score.*?(\\d)\\s*/\\s*7", report)
             if growth_match:
                 growth_score = int(growth_match.group(1))
                 growth_by_date[date] = growth_score
@@ -1174,15 +1251,15 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         # --- Curiosity Line Chart ---
         if curiosity_dates:
             fig, ax = plt.subplots()
-            ax.plot(curiosity_dates, curiosity_scores, marker='o', color='blue')
-            ax.set_title('Curiosity Response Index by Day')
-            ax.set_xlabel('Date')
-            ax.set_ylabel('Curiosity Score')
+            ax.plot(curiosity_dates, curiosity_scores, marker="o", color="blue")
+            ax.set_title("Curiosity Response Index by Day")
+            ax.set_xlabel("Date")
+            ax.set_ylabel("Curiosity Score")
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            plt.xticks(rotation=45, ha='right')
+            plt.xticks(rotation=45, ha="right")
             plt.tight_layout()
             img_stream = BytesIO()
-            plt.savefig(img_stream, format='png')
+            plt.savefig(img_stream, format="png")
             plt.close(fig)
             img_stream.seek(0)
             doc.add_picture(img_stream, width=Inches(5.5))
@@ -1191,43 +1268,43 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         # --- Growth Line Chart ---
         if growth_dates:
             fig, ax = plt.subplots()
-            ax.plot(growth_dates, growth_scores, marker='o', color='green')
-            ax.set_title('Overall Growth Score by Day')
-            ax.set_xlabel('Date')
-            ax.set_ylabel('Growth Score')
+            ax.plot(growth_dates, growth_scores, marker="o", color="green")
+            ax.set_title("Overall Growth Score by Day")
+            ax.set_xlabel("Date")
+            ax.set_ylabel("Growth Score")
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            plt.xticks(rotation=45, ha='right')
+            plt.xticks(rotation=45, ha="right")
             plt.tight_layout()
             img_stream = BytesIO()
-            plt.savefig(img_stream, format='png')
+            plt.savefig(img_stream, format="png")
             plt.close(fig)
             img_stream.seek(0)
             doc.add_picture(img_stream, width=Inches(5.5))
             doc.add_paragraph("")
 
         # --- Other suggested graphs from summary_json ---
-        for graph in summary_json.get('suggestedGraphs', []):
-            if graph['type'] in ['line_chart', 'bar_chart']:
+        for graph in summary_json.get("suggestedGraphs", []):
+            if graph["type"] in ["line_chart", "bar_chart"]:
                 fig, ax = plt.subplots()
-                if graph['type'] == 'line_chart':
-                    x = list(graph['data'].keys())
-                    y = list(graph['data'].values())
-                    ax.plot(x, y, marker='o')
-                elif graph['type'] == 'bar_chart':
-                    x = list(graph['data'].keys())
-                    y = list(graph['data'].values())
+                if graph["type"] == "line_chart":
+                    x = list(graph["data"].keys())
+                    y = list(graph["data"].values())
+                    ax.plot(x, y, marker="o")
+                elif graph["type"] == "bar_chart":
+                    x = list(graph["data"].keys())
+                    y = list(graph["data"].values())
                     ax.bar(x, y)
-                ax.set_title(graph.get('title', ''))
-                ax.set_xlabel(graph.get('xAxis', ''))
-                ax.set_ylabel(graph.get('yAxis', ''))
-                plt.xticks(rotation=45, ha='right')
+                ax.set_title(graph.get("title", ""))
+                ax.set_xlabel(graph.get("xAxis", ""))
+                ax.set_ylabel(graph.get("yAxis", ""))
+                plt.xticks(rotation=45, ha="right")
                 plt.tight_layout()
                 img_stream = BytesIO()
-                plt.savefig(img_stream, format='png')
+                plt.savefig(img_stream, format="png")
                 plt.close(fig)
                 img_stream.seek(0)
                 doc.add_picture(img_stream, width=Inches(5.5))
-                doc.add_paragraph(graph.get('description', ''))
+                doc.add_paragraph(graph.get("description", ""))
                 doc.add_paragraph("")
 
         docx_bytes = BytesIO()
@@ -1235,8 +1312,14 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         docx_bytes.seek(0)
         return docx_bytes
 
-    def generate_monthly_pdf_report(self, observations, goal_progress, strength_counts, development_counts,
-                                    summary_json):
+    def generate_monthly_pdf_report(
+        self,
+        observations,
+        goal_progress,
+        strength_counts,
+        development_counts,
+        summary_json,
+    ):
         """
         Generate a PDF version of the monthly report by converting the Word doc.
         """
@@ -1244,46 +1327,54 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         import tempfile
         import os
         from io import BytesIO
-        
+
         try:
             # Generate the Word document first
             docx_bytes = self.generate_monthly_docx_report(
-                observations, goal_progress, strength_counts, development_counts, summary_json
+                observations,
+                goal_progress,
+                strength_counts,
+                development_counts,
+                summary_json,
             )
-            
+
             # Create temporary files for conversion
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_docx:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp_docx:
                 tmp_docx.write(docx_bytes.read())
                 tmp_docx_path = tmp_docx.name
-            
-            tmp_pdf_path = tmp_docx_path.replace('.docx', '.pdf')
-            
+
+            tmp_pdf_path = tmp_docx_path.replace(".docx", ".pdf")
+
             # Convert docx to pdf
             convert(tmp_docx_path, tmp_pdf_path)
-            
+
             # Read the PDF file
-            with open(tmp_pdf_path, 'rb') as f:
+            with open(tmp_pdf_path, "rb") as f:
                 pdf_bytes = f.read()
-            
+
             # Clean up temporary files
             try:
                 os.remove(tmp_docx_path)
                 os.remove(tmp_pdf_path)
             except OSError:
                 pass  # Ignore cleanup errors
-            
+
             return BytesIO(pdf_bytes)
-            
+
         except Exception as e:
             # If PDF conversion fails, raise the error with more context
-            raise Exception(f"PDF conversion failed: {str(e)}. This might be due to missing docx2pdf dependencies or system limitations.")
+            raise Exception(
+                f"PDF conversion failed: {str(e)}. This might be due to missing docx2pdf dependencies or system limitations."
+            )
 
     def preprocess_audio_for_student(self, file, student_id):
         """Preprocess audio for students with known issues"""
         if student_id == "08cd0c39-62b1-4931-a9bb-1106a5206a39":
             # Add audio enhancement for this specific student
             # This could include noise reduction, volume normalization, etc.
-            logger.info("Applying audio preprocessing for student with detection issues")
+            logger.info(
+                "Applying audio preprocessing for student with detection issues"
+            )
             # Return processed file or original if preprocessing fails
             pass
         return file
@@ -1294,13 +1385,20 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         # This is a placeholder - you'll need to implement actual fallback logic
         raise NotImplementedError("Fallback transcription not implemented yet")
 
-    def generate_topic_suggestions(self, observer_data, child_data, child_name, child_id=None):
+    def generate_topic_suggestions(
+        self, observer_data, child_data, child_name, child_id=None
+    ):
         """Generate topic suggestions using Gemini AI based on observation history"""
         try:
             # Get child information with gender
             from models.database import get_child_by_id
+
             child = get_child_by_id(child_id) if child_id else None
-            pronouns = self.get_pronouns(child['gender']) if child and child.get('gender') else {'subject': 'they', 'object': 'them', 'possessive': 'their'}
+            pronouns = (
+                self.get_pronouns(child["gender"])
+                if child and child.get("gender")
+                else {"subject": "they", "object": "them", "possessive": "their"}
+            )
 
             # Prepare data for analysis
             recent_themes = []
@@ -1311,28 +1409,38 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
 
             # Process observer's recent observations
             for obs in observer_data:
-                if obs.get('theme_of_day'):
-                    recent_themes.append(obs['theme_of_day'])
-                if obs.get('curiosity_seed'):
-                    recent_curiosities.append(obs['curiosity_seed'])
+                if obs.get("theme_of_day"):
+                    recent_themes.append(obs["theme_of_day"])
+                if obs.get("curiosity_seed"):
+                    recent_curiosities.append(obs["curiosity_seed"])
 
                 # Parse JSON fields safely
                 try:
-                    if obs.get('strengths'):
-                        strengths = json.loads(obs['strengths']) if isinstance(obs['strengths'], str) else obs[
-                            'strengths']
-                        recent_strengths.extend(strengths[:3])  # Top 3 strengths per observation
+                    if obs.get("strengths"):
+                        strengths = (
+                            json.loads(obs["strengths"])
+                            if isinstance(obs["strengths"], str)
+                            else obs["strengths"]
+                        )
+                        recent_strengths.extend(
+                            strengths[:3]
+                        )  # Top 3 strengths per observation
 
-                    if obs.get('areas_of_development'):
-                        developments = json.loads(obs['areas_of_development']) if isinstance(
-                            obs['areas_of_development'], str) else obs['areas_of_development']
-                        recent_developments.extend(developments[:2])  # Top 2 development areas
+                    if obs.get("areas_of_development"):
+                        developments = (
+                            json.loads(obs["areas_of_development"])
+                            if isinstance(obs["areas_of_development"], str)
+                            else obs["areas_of_development"]
+                        )
+                        recent_developments.extend(
+                            developments[:2]
+                        )  # Top 2 development areas
                 except:
                     continue
 
                 # Extract learning patterns from observations
-                if obs.get('observations'):
-                    learning_patterns.append(obs['observations'][:200] + "...")
+                if obs.get("observations"):
+                    learning_patterns.append(obs["observations"][:200] + "...")
 
             # Process child-specific data
             child_themes = []
@@ -1340,30 +1448,30 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
             child_patterns = []
 
             for obs in child_data:
-                if obs.get('theme_of_day'):
-                    child_themes.append(obs['theme_of_day'])
-                if obs.get('curiosity_seed'):
-                    child_curiosities.append(obs['curiosity_seed'])
-                if obs.get('observations'):
-                    child_patterns.append(obs['observations'][:150] + "...")
+                if obs.get("theme_of_day"):
+                    child_themes.append(obs["theme_of_day"])
+                if obs.get("curiosity_seed"):
+                    child_curiosities.append(obs["curiosity_seed"])
+                if obs.get("observations"):
+                    child_patterns.append(obs["observations"][:150] + "...")
 
             # Create comprehensive prompt for Gemini
             prompt = f"""
 You are an educational consultant helping an Observer plan engaging learning sessions. Based on the learning history below, suggest 5-7 specific, actionable topics or activities for today's observation session with {child_name}.
 Also, provide a brief rationale for each suggestion. For example, indicate which theme, curiosity, past mention/instance, or learning pattern from the child's or Observer's history informed your recommendation.
 
-Use these pronouns for the student throughout the suggestions: subject = {pronouns['subject']}, object = {pronouns['object']}, possessive = {pronouns['possessive']}
+Use these pronouns for the student throughout the suggestions: subject = {pronouns["subject"]}, object = {pronouns["object"]}, possessive = {pronouns["possessive"]}
 
 OBSERVER'S RECENT TEACHING HISTORY:
-Recent Themes Covered: {', '.join(recent_themes[-8:]) if recent_themes else 'None available'}
-Recent Curiosity Seeds: {', '.join(recent_curiosities[-5:]) if recent_curiosities else 'None available'}
-Observed Strengths: {', '.join(list(set(recent_strengths[-10:]))) if recent_strengths else 'None available'}
-Areas for Development: {', '.join(list(set(recent_developments[-8:]))) if recent_developments else 'None available'}
+Recent Themes Covered: {", ".join(recent_themes[-8:]) if recent_themes else "None available"}
+Recent Curiosity Seeds: {", ".join(recent_curiosities[-5:]) if recent_curiosities else "None available"}
+Observed Strengths: {", ".join(list(set(recent_strengths[-10:]))) if recent_strengths else "None available"}
+Areas for Development: {", ".join(list(set(recent_developments[-8:]))) if recent_developments else "None available"}
 
 CHILD'S SPECIFIC LEARNING HISTORY:
-Child's Previous Themes: {', '.join(child_themes[-6:]) if child_themes else 'None available'}
-Child's Curiosity Patterns: {', '.join(child_curiosities[-4:]) if child_curiosities else 'None available'}
-Recent Learning Patterns: {chr(10).join(child_patterns[-3:]) if child_patterns else 'None available'}
+Child's Previous Themes: {", ".join(child_themes[-6:]) if child_themes else "None available"}
+Child's Curiosity Patterns: {", ".join(child_curiosities[-4:]) if child_curiosities else "None available"}
+Recent Learning Patterns: {chr(10).join(child_patterns[-3:]) if child_patterns else "None available"}
 
 GUIDELINES FOR SUGGESTIONS:
 1. Build upon previous themes but introduce fresh perspectives
@@ -1395,10 +1503,10 @@ Please provide suggestions in this exact format:
 """
 
             # Generate suggestions using Gemini
-            model = genai.GenerativeModel('gemini-2.0-flash')
-            response = model.generate_content([
-                {"role": "user", "parts": [{"text": prompt}]}
-            ])
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            response = model.generate_content(
+                [{"role": "user", "parts": [{"text": prompt}]}]
+            )
 
             if response and response.text:
                 return response.text.strip()
@@ -1413,9 +1521,14 @@ Please provide suggestions in this exact format:
         """Fallback suggestions when AI fails"""
         # Get child information with gender
         from models.database import get_child_by_id
+
         child = get_child_by_id(child_id) if child_id else None
-        pronouns = self.get_pronouns(child['gender']) if child and child.get('gender') else {'subject': 'they', 'object': 'them', 'possessive': 'their'}
-        
+        pronouns = (
+            self.get_pronouns(child["gender"])
+            if child and child.get("gender")
+            else {"subject": "they", "object": "them", "possessive": "their"}
+        )
+
         return f"""🎯 **SUGGESTED TOPICS FOR TODAY'S SESSION**
 
 1. **Creative Storytelling** - Have {child_name} create and narrate a story using everyday objects
@@ -1429,4 +1542,4 @@ Please provide suggestions in this exact format:
 - Build confidence through hands-on activities
 - Develop communication and expression skills
 
-🌟 **SESSION TIP:** Start with what interests {child_name} most and build the lesson around {pronouns['possessive']} natural curiosity!"""
+🌟 **SESSION TIP:** Start with what interests {child_name} most and build the lesson around {pronouns["possessive"]} natural curiosity!"""
