@@ -13,6 +13,11 @@ from datetime import datetime
 from config import Config
 import os
 import logging
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+from docx2pdf import convert
+import tempfile
+import calendar
 
 logger = logging.getLogger(__name__)
 
@@ -162,8 +167,11 @@ IMPORTANT: Never use gender-specific language or names from the observation text
         except Exception as e:
             raise Exception(f"Groq API Error: {str(e)}")
 
-    def transcribe_with_assemblyai(self, audio_file, language_code="en"):
-        """Transcribe audio using AssemblyAI API with English, Hindi, Marathi, or Punjabi."""
+    def transcribe_with_assemblyai(self, audio_file, language_code=None):
+        """
+        Transcribe audio using AssemblyAI with Automatic Language Detection.
+        Handles Hindi, Punjabi, Marathi, and English automatically.
+        """
         if not Config.ASSEMBLYAI_API_KEY:
             return "Error: AssemblyAI API key is not configured."
 
@@ -186,11 +194,17 @@ IMPORTANT: Never use gender-specific language or names from the observation text
 
             upload_url = upload_response.json()["upload_url"]
 
-            # Prepare transcription request
+            # Prepare transcription request with LANGUAGE DETECTION enabled
             transcript_request = {
                 "audio_url": upload_url,
-                "language_code": language_code,  # 'en', 'hi', 'mr', or 'pa'
+                "language_detection": True,  # Enable auto-detection
+                # "speech_model": "nano" # Optional: Use 'nano' for speed, remove for higher accuracy
             }
+            
+            # Allow manual override if strictly needed, otherwise default to detection
+            if language_code and language_code != "auto":
+                transcript_request["language_code"] = language_code
+                transcript_request["language_detection"] = False
 
             transcript_response = requests.post(
                 "https://api.assemblyai.com/v2/transcript",
@@ -211,14 +225,14 @@ IMPORTANT: Never use gender-specific language or names from the observation text
                 )
 
                 if polling_response.status_code != 200:
-                    return (
-                        f"Error checking transcription status: {polling_response.text}"
-                    )
+                    return f"Error checking transcription status: {polling_response.text}"
 
                 polling_data = polling_response.json()
                 status = polling_data["status"]
 
                 if status == "completed":
+                    detected_lang = polling_data.get("language_code", "unknown")
+                    logger.info(f"Transcription completed. Detected language: {detected_lang}")
                     return polling_data["text"]
                 elif status == "error":
                     return f"Transcription error: {polling_data.get('error', 'Unknown error')}"
@@ -236,6 +250,7 @@ IMPORTANT: Never use gender-specific language or names from the observation text
             Convert the following observation text into a conversational format between an Observer and a Child. 
 
 CRITICAL INSTRUCTIONS:
+- The text may contain Regional Languages (Hindi, Punjabi, etc.). Preserve the original language in the dialogue but add [English translation in brackets] if it helps context.
 - NEVER use any names that appear in the raw text or audio
 - Always refer to the child as "Child" in the dialogue labels
 - Do not assume gender - avoid using he/his, she/her pronouns
@@ -351,6 +366,16 @@ Format it as a natural dialogue where:
         prompt = f"""
         You are an educational observer tasked with generating a comprehensive and accurate Daily Insights based on the following observational notes from a student session. Pay special attention to any achievements, learning moments, and areas for growth. The report should be structured, insightful, and easy to understand for parents. Add postives and negatives based on the text content provided.
 
+        📝 TEXT CONTENT (May include English, Punjabi, Hindi or other regional languages):
+        {text_content}
+
+        CRITICAL INSTRUCTIONS FOR MULTILINGUAL CONTENT:
+        - The text content may contain inputs in regional languages (like Punjabi, Marathi, Hindi). 
+        - You MUST translate the core meaning and insights of any non-English text into English for the final report.
+        - Do not ignore the parts where the student speaks in their native language; often the most authentic expression happens there.
+        - If the student shows fluency or confidence in their native language, mention this positively in the 'Social' or 'Communication' section.
+        - Ensure the final report is fully in English, but captures the essence of what was said in the regional language.
+
         CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         - NEVER extract or use any name from the audio transcription or text content
         - ALWAYS use the exact name provided: {student_name}
@@ -388,8 +413,6 @@ Format it as a natural dialogue where:
         Ensure the entire report strictly follows the legend and that scoring aligns accurately with the defined scale.
 
         Do not use tables for the "Growth Metrics & Observations" section. Present the content in a well-spaced, structured paragraph format to preserve formatting integrity across platforms.
-        📝 TEXT CONTENT:
-        {text_content}
 
         🧾 Daily Insights Format for Parents
 
@@ -402,13 +425,13 @@ Format it as a natural dialogue where:
         🧠 Intellectual | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
         😊 Emotional | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
         🤝 Social | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
-        🎨 Creativity | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
+        🎨 Creative | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
         🏃 Physical | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
         🚀 Planning/Independence | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
         🧭 Character | [✅ Excellent/✅ Good/⚠️ Fair/📈 Needs Work] | [Brief summary]
         
-        🌈 Curiosity Response Index: [1-10] / 10  
-        [Brief explanation of {student_name}'s engagement with the curiosity seed]ation: [Describe structure and coherence of thought process]  
+        🌈 Curiosity Response Index: [1-10] / 10
+        [Brief explanation of {student_name}'s engagement with the curiosity seed]
 
         🧠 Overall Growth Score:  
         [🔵 Balanced Growth / 🟡 Moderate Growth / 🔴 Limited Growth] – [X/7] Areas Active 
@@ -565,7 +588,7 @@ Format it as a natural dialogue where:
                 run.bold = True
                 run.font.name = "Segoe UI Emoji"
                 run.font.size = docx.shared.Pt(11)
-            elif line.startswith(("🌈", "🗣️")):
+            elif line.startswith(("🌈")):
                 heading = doc.add_heading(line, level=2)
                 heading.runs[0].font.name = "Segoe UI Emoji"
             elif line.startswith("🧠 Overall"):
@@ -616,7 +639,6 @@ Format it as a natural dialogue where:
             "🧭": "[Character/Values]",
             "🚀": "[Planning/Independence]",
             "🌈": "[Curiosity Response]",
-            "🗣️": "[Communication Skills]",
             "📣": "[Note for Parent]",
             "🟢": "[Excellent]",
             "✅": "[Good]",
@@ -943,8 +965,6 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
     ):
         """Generate monthly summary in the new JSON format with graph recommendations"""
         try:
-            import calendar
-
             # Get child information with gender
             from models.database import get_child_by_id
 
@@ -1169,10 +1189,6 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         import docx
         from docx.shared import Inches, Pt
         from io import BytesIO
-        import matplotlib.pyplot as plt
-        from matplotlib.ticker import MaxNLocator
-        import re
-        import json
 
         doc = docx.Document()
         style = doc.styles["Normal"]
@@ -1233,12 +1249,12 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
             except Exception:
                 report = ""
             curiosity_match = re.search(
-                r"🌈 Curiosity Response Index: (\\d{1,2}) ?/ ?10", report
+                r"🌈 Curiosity Response Index: (\d{1,2}) ?/ ?10", report
             )
             if curiosity_match:
                 curiosity_score = int(curiosity_match.group(1))
                 curiosity_by_date[date] = curiosity_score
-            growth_match = re.search(r"Overall Growth Score.*?(\\d)\\s*/\\s*7", report)
+            growth_match = re.search(r"Overall Growth Score.*?(\d)\s*/\s*7", report)
             if growth_match:
                 growth_score = int(growth_match.group(1))
                 growth_by_date[date] = growth_score
@@ -1323,11 +1339,6 @@ CRITICAL INSTRUCTIONS FOR NAME AND GENDER USAGE:
         """
         Generate a PDF version of the monthly report by converting the Word doc.
         """
-        from docx2pdf import convert
-        import tempfile
-        import os
-        from io import BytesIO
-
         try:
             # Generate the Word document first
             docx_bytes = self.generate_monthly_docx_report(

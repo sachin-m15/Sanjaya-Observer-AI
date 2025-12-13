@@ -13,11 +13,11 @@ try:
     gemini_api_key = Config.GOOGLE_API_KEY
     if not gemini_api_key:
         # Fallback to environment variable
-        gemini_api_key = os.getenv('GEMINI_API_KEY')
-    
+        gemini_api_key = os.getenv("GEMINI_API_KEY")
+
     if gemini_api_key:
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel("gemini-1.5-pro")
         gemini_available = True
         logger.info("✅ Gemini AI initialized successfully")
     else:
@@ -28,7 +28,7 @@ except Exception as e:
     logger.error(f"❌ Failed to initialize Gemini AI: {e}")
 
 # Create blueprint
-chatbot_bp = Blueprint('chatbot', __name__)
+chatbot_bp = Blueprint("chatbot", __name__)
 
 # Comprehensive application-specific prompt
 SANJAYA_PROMPT = """
@@ -126,25 +126,28 @@ RESPONSE STYLE:
 Remember: You are representing a program that values listening, understanding, and supporting children's growth through ethical observation. Your responses should reflect this compassionate, educational mission.
 """
 
-@chatbot_bp.route('/api/chatbot', methods=['POST'])
+
+@chatbot_bp.route("/api/chatbot", methods=["POST"])
 def chatbot_response():
     """
     Handle chatbot messages using Gemini AI with application-specific context
     """
     try:
         if not gemini_available:
-            return jsonify({
-                'error': 'Chatbot service is temporarily unavailable',
-                'response': 'I apologize, but the chatbot service is currently unavailable. Please try again later or contact our support team directly.'
-            }), 503
+            return jsonify(
+                {
+                    "error": "Chatbot service is temporarily unavailable",
+                    "response": "I apologize, but the chatbot service is currently unavailable. Please try again later or contact our support team directly.",
+                }
+            ), 503
 
         data = request.get_json()
-        if not data or 'message' not in data:
-            return jsonify({'error': 'No message provided'}), 400
+        if not data or "message" not in data:
+            return jsonify({"error": "No message provided"}), 400
 
-        user_message = data['message'].strip()
+        user_message = data["message"].strip()
         if not user_message:
-            return jsonify({'error': 'Empty message'}), 400
+            return jsonify({"error": "Empty message"}), 400
 
         # Log the user message (without storing sensitive data)
         logger.info(f"Chatbot query received: {user_message[:100]}...")
@@ -153,38 +156,44 @@ def chatbot_response():
         full_prompt = f"{SANJAYA_PROMPT}\n\nUser Question: {user_message}\n\nPlease provide a helpful, accurate response based on the information above. Keep your response conversational and informative, staying within the scope of the Sanjaya application."
 
         # Generate response using Gemini (same pattern as observation_extractor.py)
-        response = model.generate_content([
-            {"role": "user", "parts": [{"text": full_prompt}]}
-        ])
-        
+        response = model.generate_content(
+            [{"role": "user", "parts": [{"text": full_prompt}]}]
+        )
+
         if not response or not response.text:
-            return jsonify({
-                'error': 'Failed to generate response',
-                'response': 'I apologize, but I couldn\'t generate a response right now. Please try rephrasing your question or contact our support team.'
-            }), 500
+            return jsonify(
+                {
+                    "error": "Failed to generate response",
+                    "response": "I apologize, but I couldn't generate a response right now. Please try rephrasing your question or contact our support team.",
+                }
+            ), 500
 
         # Log successful response
         logger.info(f"Chatbot response generated successfully")
 
-        return jsonify({
-            'response': response.text.strip(),
-            'status': 'success'
-        })
+        return jsonify({"response": response.text.strip(), "status": "success"})
 
     except Exception as e:
         logger.error(f"Chatbot error: {str(e)}", exc_info=True)
-        return jsonify({
-            'error': 'Internal server error',
-            'response': 'I apologize, but I encountered an error while processing your request. Please try again in a moment.'
-        }), 500
+        return jsonify(
+            {
+                "error": "Internal server error",
+                "response": "I apologize, but I encountered an error while processing your request. Please try again in a moment.",
+            }
+        ), 500
 
-@chatbot_bp.route('/api/chatbot/status', methods=['GET'])
+
+@chatbot_bp.route("/api/chatbot/status", methods=["GET"])
 def chatbot_status():
     """
     Check chatbot service status
     """
-    return jsonify({
-        'status': 'available' if gemini_available else 'unavailable',
-        'gemini_configured': gemini_available,
-        'message': 'Chatbot service is running' if gemini_available else 'Chatbot service is unavailable'
-    })
+    return jsonify(
+        {
+            "status": "available" if gemini_available else "unavailable",
+            "gemini_configured": gemini_available,
+            "message": "Chatbot service is running"
+            if gemini_available
+            else "Chatbot service is unavailable",
+        }
+    )
